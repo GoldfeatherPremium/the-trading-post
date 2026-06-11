@@ -20,6 +20,9 @@ export interface SessionUser {
   is_banned: number;
   wallet_frozen: number;
   vacation_mode: number;
+  country: string | null;
+  locale: string;
+  preferred_currency: string;
   created_at: number;
 }
 
