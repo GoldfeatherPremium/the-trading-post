@@ -455,10 +455,10 @@ export const sellerRespondDispute = createServerFn({ method: "POST" })
       [data.orderId],
     );
     if (!dispute || dispute.status === "resolved") fail("No open dispute on this order.");
-    await run(`update disputes set seller_response = ?, status = 'seller_responded' where id = ?`, [
-      data.response,
-      dispute!.id,
-    ]);
+    await run(
+      `update disputes set seller_response = ?, status = 'seller_responded', last_activity_at = ? where id = ?`,
+      [data.response, now(), dispute!.id],
+    );
     await notify(
       o!.buyer_id,
       "dispute_update",
