@@ -2,10 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { adminForceOrderAction, adminListOrders } from "@/lib/api/admin";
+import { adminForceOrderAction, adminListOrders, adminEscrowAction } from "@/lib/api/admin";
 import { ORDER_STATUS_META, dateTime, usdt } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ShieldAlert, ShieldCheck, Clock } from "lucide-react";
+
+const ESCROW_CLS: Record<string, string> = {
+  held: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  on_hold: "bg-destructive/15 text-destructive border-destructive/40",
+  released: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  refunded: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  none: "bg-muted/30 text-muted-foreground border-border",
+};
 
 export const Route = createFileRoute("/admin/orders")({
   component: AdminOrders,
