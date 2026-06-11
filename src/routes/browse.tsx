@@ -48,6 +48,43 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   );
 }
 
+function FacetGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-display text-[11px] tracking-widest text-muted-foreground mb-2">
+        {title.toUpperCase()}
+      </h3>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function FacetButton({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between gap-2 px-2 py-1 rounded text-[11px] transition-colors ${
+        active
+          ? "bg-primary/20 text-primary font-bold"
+          : "hover:bg-secondary text-foreground/80"
+      }`}
+    >
+      <span className="truncate text-left">{label}</span>
+      <span className="font-mono text-[10px] text-muted-foreground shrink-0">{count}</span>
+    </button>
+  );
+}
+
 function BrowsePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/browse" });
