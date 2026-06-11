@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { updateProfile } from "@/lib/api/auth";
+import { getI18nBootstrap, updatePreferences } from "@/lib/api/i18n";
 import { useMe } from "@/hooks/use-me";
 import { PageShell } from "@/components/shell";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,35 @@ function AccountPage() {
   const { me } = useMe();
   const qc = useQueryClient();
   const [pw, setPw] = useState({ currentPassword: "", newPassword: "" });
+  const i18n = useQuery({ queryKey: ["i18nBootstrap"], queryFn: () => getI18nBootstrap() });
+  const [prefs, setPrefs] = useState({ locale: "en", preferred_currency: "USD", country: "" });
+
+  useEffect(() => {
+    if (me) {
+      setPrefs({
+        locale: (me as unknown as { locale?: string }).locale ?? "en",
+        preferred_currency:
+          (me as unknown as { preferred_currency?: string }).preferred_currency ?? "USD",
+        country: (me as unknown as { country?: string | null }).country ?? "",
+      });
+    }
+  }, [me]);
 
   const save = useMutation({
     mutationFn: (data: Parameters<typeof updateProfile>[0]["data"]) => updateProfile({ data }),
     onSuccess: () => {
       toast.success("Saved");
       setPw({ currentPassword: "", newPassword: "" });
+      qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const savePrefs = useMutation({
+    mutationFn: (data: Parameters<typeof updatePreferences>[0]["data"]) =>
+      updatePreferences({ data }),
+    onSuccess: () => {
+      toast.success("Preferences updated");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
