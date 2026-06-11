@@ -45,6 +45,19 @@ function AdminOrders() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const escrow = useMutation({
+    mutationFn: (vars: {
+      orderId: string;
+      action: "hold" | "unhold" | "extend";
+      hours?: number;
+      reason: string;
+    }) => adminEscrowAction({ data: vars }),
+    onSuccess: () => {
+      toast.success("Escrow updated");
+      qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <div className="space-y-3">
