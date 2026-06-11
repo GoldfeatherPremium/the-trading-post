@@ -341,5 +341,137 @@ export const quickSearch = createServerFn({ method: "GET" })
         [like],
       ),
     ]);
-    return { products, sellers, categories, items };
+    const suggestion = products.length === 0 ? await didYouMean(term) : null;
+    return { products, sellers, categories, items, suggestion };
+  });
+
+/**
+ * Facets: counts per category / item / delivery / verification tier for the
+ * currently-applied query. Drives the left rail on /browse so users always
+ * know how many results each filter would yield.
+ */
+export const browseFacets = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      category: z.string().optional(),
+      item: z.string().optional(),
+      q: z.string().max(100).optional(),
+      delivery: z.enum(["auto", "manual"]).optional(),
+      minPrice: z.number().optional(),
+      maxPrice: z.number().optional(),
+      inStock: z.boolean().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    // Build a shared WHERE excluding the facet being counted, so the user
+    // can switch between categories without losing the option list.
+    const baseConds: string[] = [`p.status = 'active'`];
+    const baseParams: Array<string | number> = [];
+    if (data.q) {
+      const tokens = tokenize(data.q);
+      if (tokens.length > 0) {
+        const { sql, params: sp } = buildSearchClause(tokens, [
+          "p.title",
+          "p.description",
+          "coalesce(p.platform,'')",
+          "u.username",
+          "c.name",
+          "coalesce(ci.name,'')",
+        ]);
+        baseConds.push(`(${sql})`);
+        baseParams.push(...sp);
+      }
+    }
+    if (data.minPrice !== undefined) {
+      baseConds.push(`p.price_cents >= ?`);
+      baseParams.push(Math.round(data.minPrice * 100));
+    }
+    if (data.maxPrice !== undefined) {
+      baseConds.push(`p.price_cents <= ?`);
+      baseParams.push(Math.round(data.maxPrice * 100));
+    }
+    if (data.inStock) {
+      baseConds.push(`(p.delivery_type = 'manual' or p.stock_count > 0)`);
+    }
+    const FROM = `from products p
+       join categories c on c.id = p.category_id
+       join users u on u.id = p.seller_id
+       left join catalog_items ci on ci.id = p.item_id`;
+
+    const withCond = (extra: string[], extraParams: Array<string | number>) => ({
+      where: [...baseConds, ...extra].join(" and "),
+      params: [...baseParams, ...extraParams],
+    });
+
+    // Categories — count ignoring active category filter
+    const catCond = withCond(
+      data.item ? [`p.item_id = ?`] : [],
+      data.item ? [data.item] : [],
+    );
+    const itemCond = withCond(
+      data.category ? [`c.slug = ?`] : [],
+      data.category ? [data.category] : [],
+    );
+    const fullCond = withCond(
+      [
+        ...(data.category ? [`c.slug = ?`] : []),
+        ...(data.item ? [`p.item_id = ?`] : []),
+      ],
+      [
+        ...(data.category ? [data.category] : []),
+        ...(data.item ? [data.item] : []),
+      ],
+    );
+
+    const [categories, items, delivery, tiers, priceRange] = await Promise.all([
+      q<{ slug: string; name: string; icon: string; c: number }>(
+        `select c.slug, c.name, c.icon, count(*) c ${FROM} where ${catCond.where}
+           group by c.id order by c order by c.sort`,
+        catCond.params,
+      ).catch(() =>
+        q<{ slug: string; name: string; icon: string; c: number }>(
+          `select c.slug, c.name, c.icon, count(*) c ${FROM} where ${catCond.where}
+             group by c.id order by c desc`,
+          catCond.params,
+        ),
+      ),
+      q<{ id: string; name: string; c: number }>(
+        `select ci.id, ci.name, count(*) c ${FROM} where ${itemCond.where} and ci.id is not null
+           group by ci.id order by c desc limit 30`,
+        itemCond.params,
+      ),
+      q<{ delivery_type: string; c: number }>(
+        `select p.delivery_type, count(*) c ${FROM} where ${fullCond.where} group by p.delivery_type`,
+        fullCond.params,
+      ),
+      q<{ verification_tier: string; c: number }>(
+        `select u.verification_tier, count(*) c ${FROM} where ${fullCond.where} group by u.verification_tier`,
+        fullCond.params,
+      ),
+      q1<{ lo: number | null; hi: number | null }>(
+        `select min(p.price_cents) lo, max(p.price_cents) hi ${FROM} where ${fullCond.where}`,
+        fullCond.params,
+      ),
+    ]);
+    return { categories, items, delivery, tiers, priceRange: priceRange ?? { lo: 0, hi: 0 } };
+  });
+
+/**
+ * Cheap autocomplete: returns up to 8 product title suggestions matching a
+ * prefix. Used by the header SmartSearch for inline typeahead.
+ */
+export const searchSuggest = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ q: z.string().max(60) }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const term = data.q.trim().toLowerCase();
+    if (term.length < 2) return { suggestions: [] as string[] };
+    const rows = await q<{ s: string }>(
+      `select distinct lower(title) s from products
+         where status = 'active' and lower(title) like ?
+         order by sold_count desc limit 8`,
+      [`%${term}%`],
+    );
+    return { suggestions: rows.map((r) => r.s) };
   });
