@@ -74,6 +74,14 @@ export const getMyApplication = createServerFn({ method: "GET" }).handler(async 
 // ---------------------------------------------------------------------------
 const productInput = z.object({
   categoryId: z.string(),
+  variants: z
+    .array(
+      z.object({ title: z.string().min(1).max(60), priceUsdt: z.number().min(0.5).max(100_000) }),
+    )
+    .max(20)
+    .default([]),
+  expiresInDays: z.number().int().min(0).max(90).default(0),
+  insuranceDays: z.number().int().min(0).max(30).default(0),
   itemId: z.string().optional(),
   title: z.string().min(8).max(120),
   description: z.string().min(30).max(5000),
@@ -150,6 +158,19 @@ export const saveProduct = createServerFn({ method: "POST" })
           data.productId,
         ],
       );
+      await run(`update products set expires_at = ?, insurance_days = ? where id = ?`, [
+        data.expiresInDays > 0 ? now() + data.expiresInDays * 86_400_000 : null,
+        data.insuranceDays,
+        data.productId,
+      ]);
+      await run(`delete from product_variants where product_id = ?`, [data.productId]);
+      for (let i = 0; i < data.variants.length; i++) {
+        const v = data.variants[i];
+        await run(
+          `insert into product_variants (id, product_id, title, price_cents, sort) values (?,?,?,?,?)`,
+          [uid(), data.productId, v.title, Math.round(v.priceUsdt * 100), i],
+        );
+      }
       await audit(user.id, "product.update", "product", data.productId);
       return { productId: data.productId };
     }
@@ -189,6 +210,18 @@ export const saveProduct = createServerFn({ method: "POST" })
         now(),
       ],
     );
+    await run(`update products set expires_at = ?, insurance_days = ? where id = ?`, [
+      data.expiresInDays > 0 ? now() + data.expiresInDays * 86_400_000 : null,
+      data.insuranceDays,
+      id,
+    ]);
+    for (let i = 0; i < data.variants.length; i++) {
+      const v = data.variants[i];
+      await run(
+        `insert into product_variants (id, product_id, title, price_cents, sort) values (?,?,?,?,?)`,
+        [uid(), id, v.title, Math.round(v.priceUsdt * 100), i],
+      );
+    }
     await audit(user.id, "product.create", "product", id);
     return { productId: id };
   });

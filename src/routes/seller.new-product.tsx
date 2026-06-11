@@ -45,6 +45,9 @@ function ProductForm() {
     requiredInfo: "",
   });
   const [agreed, setAgreed] = useState(false);
+  const [variants, setVariants] = useState<Array<{ title: string; priceUsdt: string }>>([]);
+  const [expiresInDays, setExpiresInDays] = useState(0);
+  const [insuranceDays, setInsuranceDays] = useState(0);
   const [itemId, setItemId] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestName, setSuggestName] = useState("");
@@ -92,6 +95,11 @@ function ProductForm() {
         data: {
           productId: edit,
           itemId: itemId || undefined,
+          variants: variants
+            .filter((v) => v.title.trim() && parseFloat(v.priceUsdt) > 0)
+            .map((v) => ({ title: v.title.trim(), priceUsdt: parseFloat(v.priceUsdt) })),
+          expiresInDays,
+          insuranceDays,
           categoryId: form.categoryId,
           title: form.title,
           description: form.description,
@@ -367,6 +375,103 @@ function ProductForm() {
           onChange={(e) => setForm({ ...form, warrantyHours: e.target.value })}
           placeholder={selectedCat ? `${selectedCat.default_warranty_hours}` : ""}
         />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">Custom programs / price tiers (optional)</Label>
+        <p className="text-[10px] text-muted-foreground">
+          Offer multiple options on one listing, e.g. "1 Month" / "3 Months" / "12 Months". Buyers
+          pick one at checkout; leave empty for a single-price listing.
+        </p>
+        {variants.map((v, i) => (
+          <div key={i} className="flex gap-2">
+            <Input
+              placeholder={`Option ${i + 1} title (e.g. 1 Month)`}
+              value={v.title}
+              onChange={(e) =>
+                setVariants(variants.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))
+              }
+            />
+            <Input
+              type="number"
+              min="0.5"
+              step="0.01"
+              placeholder="USDT"
+              className="w-28"
+              value={v.priceUsdt}
+              onChange={(e) =>
+                setVariants(
+                  variants.map((x, j) => (j === i ? { ...x, priceUsdt: e.target.value } : x)),
+                )
+              }
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setVariants(variants.filter((_, j) => j !== i))}
+            >
+              ×
+            </Button>
+          </div>
+        ))}
+        {variants.length < 20 && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setVariants([...variants, { title: "", priceUsdt: "" }])}
+          >
+            ⊕ Add custom program
+          </Button>
+        )}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">⏱ Listing expiration</Label>
+          <div className="flex gap-2">
+            {[0, 7, 15, 30].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setExpiresInDays(d)}
+                className={`px-3 py-2 rounded-md text-xs font-bold border ${
+                  expiresInDays === d
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-secondary hover:bg-border"
+                }`}
+              >
+                {d === 0 ? "No expiry" : `${d} Days`}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Expired listings pause automatically; edit & resubmit to relist.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">🛡 Insurance program</Label>
+          <div className="flex gap-2">
+            {[0, 7, 15, 30].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setInsuranceDays(d)}
+                className={`px-3 py-2 rounded-md text-xs font-bold border ${
+                  insuranceDays === d
+                    ? "border-accent bg-accent/15 text-accent"
+                    : "border-border bg-secondary hover:bg-border"
+                }`}
+              >
+                {d === 0 ? "Do not join" : `${d} Days`}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Extends buyer warranty by the chosen days; insured listings rank first in browse.
+          </p>
+        </div>
       </div>
 
       <h2 className="text-sm font-bold flex items-center gap-2 pt-2">

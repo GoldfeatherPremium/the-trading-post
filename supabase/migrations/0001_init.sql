@@ -1,6 +1,5 @@
 -- X-VAULT marketplace schema.
--- The app applies this automatically on first boot when DATABASE_URL is set,
--- so running it manually in the Supabase SQL editor is optional.
+-- Applied automatically on first boot when DATABASE_URL is set.
 
 
 create table if not exists users (
@@ -314,6 +313,15 @@ create table if not exists item_suggestions (
   reviewed_at bigint
 );
 
+create table if not exists product_variants (
+  id text primary key,
+  product_id text not null references products(id),
+  title text not null,
+  price_cents bigint not null,
+  sort integer not null default 0
+);
+create index if not exists idx_variants_product on product_variants(product_id);
+
 create table if not exists coupons (
   id text primary key,
   code text unique not null,
@@ -329,5 +337,8 @@ create table if not exists coupons (
 -- additive columns applied by the app on boot
 alter table orders add column if not exists discount_cents bigint not null default 0;
 alter table orders add column if not exists coupon_code text;
+alter table orders add column if not exists variant_title text;
 alter table site_settings add column if not exists announcement text;
 alter table products add column if not exists item_id text;
+alter table products add column if not exists expires_at bigint;
+alter table products add column if not exists insurance_days integer not null default 0;

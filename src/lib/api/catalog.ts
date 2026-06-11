@@ -40,6 +40,8 @@ export interface PublicProduct {
   risk_tier: string;
   item_id: string | null;
   item_name: string | null;
+  insurance_days: number;
+  expires_at: number | null;
   seller: PublicSeller;
 }
 
@@ -52,7 +54,7 @@ const productSelect = `
          u.id as s_id, u.username as s_username, u.seller_level as s_level, u.rating as s_rating,
          u.rating_count as s_rating_count, u.total_sales as s_total_sales,
          u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created,
-         p.item_id, ci.name as item_name
+         p.item_id, ci.name as item_name, p.insurance_days, p.expires_at
   from products p
   join categories c on c.id = p.category_id
   join users u on u.id = p.seller_id
@@ -169,7 +171,7 @@ export const browseProducts = createServerFn({ method: "GET" })
       where.push(`(p.delivery_type = 'manual' or p.stock_count > 0)`);
     }
     const order = {
-      popular: `p.sold_count desc, p.views desc`,
+      popular: `p.insurance_days desc, p.sold_count desc, p.views desc`,
       price_asc: `p.price_cents asc`,
       price_desc: `p.price_cents desc`,
       newest: `p.created_at desc`,
@@ -197,11 +199,11 @@ export const getProduct = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const row = await q1(`${productSelect} where p.slug = ?`, [data.slug]);
-    if (!row) return { product: null, reviews: [] };
+    if (!row) return { product: null, reviews: [], variants: [] };
     const product = mapProduct(row);
     if (product.status !== "active" && product.status !== "out_of_stock")
-      return { product: null, reviews: [] };
-    const [, reviews] = await Promise.all([
+      return { product: null, reviews: [], variants: [] };
+    const [, reviews, variants] = await Promise.all([
       run(`update products set views = views + 1 where id = ?`, [product.id]),
       q<{
         rating: number;
@@ -214,8 +216,12 @@ export const getProduct = createServerFn({ method: "GET" })
        from reviews r join users u on u.id = r.buyer_id where r.product_id = ? order by r.created_at desc limit 30`,
         [product.id],
       ),
+      q<{ id: string; title: string; price_cents: number }>(
+        `select id, title, price_cents from product_variants where product_id = ? order by sort`,
+        [product.id],
+      ),
     ]);
-    return { product, reviews };
+    return { product, reviews, variants };
   });
 
 export const getSellerStore = createServerFn({ method: "GET" })

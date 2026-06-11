@@ -316,6 +316,13 @@ export async function sweepLifecycle(force = false): Promise<void> {
   if (!force && t - lastSweep < SWEEP_INTERVAL_MS) return;
   lastSweep = t;
 
+  // 0. listing-expirer: pause listings past their expiration date
+  await run(
+    `update products set status = 'paused', reject_reason = 'Listing expired — edit & resubmit to relist'
+     where status in ('active','out_of_stock') and expires_at is not null and expires_at < ?`,
+    [t],
+  );
+
   // 1. order-expirer: unpaid orders past the payment window
   const expired = await q<{ id: string }>(
     `select id from orders where status = 'awaiting_payment' and expires_at < ?`,

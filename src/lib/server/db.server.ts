@@ -489,6 +489,15 @@ export function schemaSql(dialect: "sqlite" | "postgres"): string {
     reviewed_at ${big}
   );
 
+  create table if not exists product_variants (
+    id text primary key,
+    product_id text not null references products(id),
+    title text not null,
+    price_cents ${big} not null,
+    sort integer not null default 0
+  );
+  create index if not exists idx_variants_product on product_variants(product_id);
+
   create table if not exists coupons (
     id text primary key,
     code text unique not null,
@@ -521,6 +530,9 @@ async function migrate(e: Engine): Promise<void> {
     `alter table orders add column coupon_code text`,
     `alter table site_settings add column announcement text`,
     `alter table products add column item_id text`,
+    `alter table products add column expires_at ${big}`,
+    `alter table products add column insurance_days integer not null default 0`,
+    `alter table orders add column variant_title text`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists

@@ -37,6 +37,7 @@ export const createOrder = createServerFn({ method: "POST" })
       buyerInfo: z.string().max(2000).optional(),
       network: z.enum(["TRC20", "BEP20"]).default("TRC20"),
       couponCode: z.string().max(40).optional(),
+      variantId: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -86,6 +87,22 @@ export const createOrder = createServerFn({ method: "POST" })
     ))!.c;
     if (openUnpaid >= 5) fail("You have too many unpaid orders. Pay or cancel them first.");
 
+    let unitPrice = p!.price_cents;
+    let titleSnapshot = p!.title;
+    let variantTitle: string | null = null;
+    if (data.variantId) {
+      const v = await q1<{ title: string; price_cents: number }>(
+        `select title, price_cents from product_variants where id = ? and product_id = ?`,
+        [data.variantId, p!.id],
+      );
+      if (!v) fail("Invalid option selected.");
+      unitPrice = v!.price_cents;
+      variantTitle = v!.title;
+      titleSnapshot = `${p!.title} — ${v!.title}`;
+    }
+    const insuranceDays = (p! as unknown as { insurance_days?: number }).insurance_days ?? 0;
+    const warrantyHours = (p!.warranty_hours ?? p!.default_warranty_hours) + insuranceDays * 24;
+
     const orderId = uid();
     const t = now();
     await tx(async () => {
@@ -106,7 +123,7 @@ export const createOrder = createServerFn({ method: "POST" })
           [p!.id, p!.id],
         );
       }
-      const grossTotal = p!.price_cents * data.qty;
+      const grossTotal = unitPrice * data.qty;
       let discount = 0;
       let couponCode: string | null = null;
       if (data.couponCode?.trim()) {
@@ -123,30 +140,31 @@ export const createOrder = createServerFn({ method: "POST" })
         `insert into orders (id, order_no, buyer_id, seller_id, product_id, product_title, image_key, qty,
           unit_price_cents, total_cents, commission_pct, commission_cents, seller_net_cents, status,
           delivery_type, delivery_sla_minutes, warranty_hours, buyer_info, expires_at, created_at,
-          discount_cents, coupon_code)
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?, 'awaiting_payment', ?,?,?,?,?,?,?,?)`,
+          discount_cents, coupon_code, variant_title)
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?, 'awaiting_payment', ?,?,?,?,?,?,?,?,?)`,
         [
           orderId,
           makeOrderNo(),
           user.id,
           p!.seller_id,
           p!.id,
-          p!.title,
+          titleSnapshot,
           p!.image_key,
           data.qty,
-          p!.price_cents,
+          unitPrice,
           total,
           commissionPct,
           commission,
           total - commission,
           p!.delivery_type,
           p!.delivery_sla_minutes,
-          p!.warranty_hours ?? p!.default_warranty_hours,
+          warrantyHours,
           data.buyerInfo ?? null,
           expiresAt,
           t,
           discount,
           couponCode,
+          variantTitle,
         ],
       );
       await run(
