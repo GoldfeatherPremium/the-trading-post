@@ -257,7 +257,15 @@ function OrderPage() {
               <h2 className="text-xs font-bold tracking-widest text-destructive flex items-center gap-1.5">
                 <AlertTriangle className="size-4" /> DISPUTE ·{" "}
                 {disp.status.replaceAll("_", " ").toUpperCase()}
+                <Link
+                  to="/disputes/$orderId"
+                  params={{ orderId }}
+                  className="ml-auto text-[10px] font-bold text-primary underline"
+                >
+                  Open evidence vault →
+                </Link>
               </h2>
+
               <p className="text-xs">
                 <b>Reason:</b> {disp.reason.replaceAll("_", " ")}
               </p>
