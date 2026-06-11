@@ -106,8 +106,30 @@ function AdminOrders() {
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${meta.cls}`}>
                   {meta.label.toUpperCase()}
                 </span>
+                {o.escrow_status && o.escrow_status !== "none" && (
+                  <span
+                    className={`inline-flex items-center gap-1 text-[9px] font-bold border px-1.5 py-0.5 rounded ${
+                      ESCROW_CLS[o.escrow_status as string] ?? ESCROW_CLS.none
+                    }`}
+                    title={(o.escrow_hold_reason as string) ?? "Escrow state"}
+                  >
+                    {o.escrow_status === "on_hold" ? (
+                      <ShieldAlert className="size-2.5" />
+                    ) : o.escrow_status === "released" ? (
+                      <ShieldCheck className="size-2.5" />
+                    ) : (
+                      <Clock className="size-2.5" />
+                    )}
+                    {(o.escrow_status as string).replace("_", " ").toUpperCase()}
+                  </span>
+                )}
                 <span className="font-mono text-accent">{usdt(o.total_cents as number)}</span>
               </div>
+              {o.escrow_status === "on_hold" && o.escrow_hold_reason && (
+                <p className="text-[10px] text-destructive bg-destructive/5 border border-destructive/20 rounded px-2 py-1">
+                  Hold: {o.escrow_hold_reason as string}
+                </p>
+              )}
               <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
                 <span>buyer {o.buyer_name}</span>·<span>seller {o.seller_name}</span>·
                 <span>{dateTime(o.created_at as number)}</span>
