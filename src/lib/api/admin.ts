@@ -103,6 +103,65 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
 });
 
 // ---------------------------------------------------------------------------
+// Realtime pulse — lightweight metrics for the admin control center header.
+// ---------------------------------------------------------------------------
+export const getAdminPulse = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  await requireStaff();
+  const t = now();
+  const dayMs = 86_400_000;
+  const since = t - dayMs;
+  const [
+    orders24h,
+    revenue24h,
+    refunds24h,
+    escrowOnHold,
+    newUsers24h,
+    activeDisputes,
+    pendingWithdrawalAmt,
+    avgTrustRow,
+    topSellersCount,
+  ] = await Promise.all([
+    q1<{ c: number }>(
+      `select count(*) c from orders where paid_at > ? and status not in ('cancelled','expired')`,
+      [since],
+    ),
+    q1<{ s: number }>(
+      `select coalesce(sum(total_cents),0) s from orders where paid_at > ? and status not in ('cancelled','expired')`,
+      [since],
+    ),
+    q1<{ s: number; c: number }>(
+      `select coalesce(sum(total_cents),0) s, count(*) c from orders where status = 'refunded' and updated_at > ?`,
+      [since],
+    ),
+    q1<{ c: number }>(
+      `select count(*) c from orders where escrow_status = 'on_hold'`,
+    ),
+    q1<{ c: number }>(`select count(*) c from users where created_at > ?`, [since]),
+    q1<{ c: number }>(`select count(*) c from disputes where status != 'resolved'`),
+    q1<{ s: number }>(
+      `select coalesce(sum(amount_cents),0) s from withdrawals where status = 'pending'`,
+    ),
+    q1<{ s: number }>(
+      `select coalesce(avg(trust_score),0) s from users where role in ('seller','admin') and trust_score > 0`,
+    ),
+    q1<{ c: number }>(`select count(*) c from users where role in ('seller','admin')`),
+  ]);
+  return {
+    orders24h: orders24h!.c,
+    revenue24h: revenue24h!.s,
+    refunds24h: refunds24h!,
+    escrowOnHold: escrowOnHold!.c,
+    newUsers24h: newUsers24h!.c,
+    activeDisputes: activeDisputes!.c,
+    pendingWithdrawalAmt: pendingWithdrawalAmt!.s,
+    avgTrust: Math.round(avgTrustRow!.s),
+    sellers: topSellersCount!.c,
+    ts: t,
+  };
+});
+
+// ---------------------------------------------------------------------------
 // Seller approvals
 // ---------------------------------------------------------------------------
 export const listSellerApplications = createServerFn({ method: "GET" }).handler(async () => {
