@@ -279,3 +279,46 @@ export const listCatalogItems = createServerFn({ method: "GET" }).handler(async 
   for (const m of maps) (byItem[m.item_id] ??= []).push(m.category_id);
   return { items: items.map((i) => ({ ...i, categoryIds: byItem[i.id] ?? [] })) };
 });
+
+export const quickSearch = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ q: z.string().max(100) }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const term = data.q.trim().toLowerCase();
+    if (!term) return { products: [], sellers: [], categories: [], items: [] };
+    const like = `%${term}%`;
+    const [products, sellers, categories, items] = await Promise.all([
+      q<{
+        id: string;
+        title: string;
+        slug: string;
+        image_key: string | null;
+        price_cents: number;
+        category_name: string;
+        delivery_type: string;
+      }>(
+        `select p.id, p.title, p.slug, p.image_key, p.price_cents, c.name as category_name, p.delivery_type
+         from products p join categories c on c.id = p.category_id
+         where p.status = 'active' and (lower(p.title) like ? or lower(p.description) like ? or lower(coalesce(p.platform,'')) like ?)
+         order by p.sold_count desc, p.views desc limit 6`,
+        [like, like, like],
+      ),
+      q<{ id: string; username: string; rating: number; total_sales: number }>(
+        `select id, username, rating, total_sales from users
+         where seller_status = 'approved' and is_banned = 0 and lower(username) like ?
+         order by total_sales desc limit 4`,
+        [like],
+      ),
+      q<{ id: string; name: string; slug: string; icon: string }>(
+        `select id, name, slug, icon from categories
+         where is_active = 1 and lower(name) like ? order by sort limit 5`,
+        [like],
+      ),
+      q<{ id: string; name: string; slug: string }>(
+        `select id, name, slug from catalog_items
+         where is_active = 1 and lower(name) like ? order by sort, name limit 5`,
+        [like],
+      ),
+    ]);
+    return { products, sellers, categories, items };
+  });
