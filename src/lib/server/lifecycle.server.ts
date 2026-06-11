@@ -291,11 +291,12 @@ export function releaseOrder(orderId: string, note?: string): Promise<void> {
   return tx(async () => {
     const o = await getOrderRow(orderId);
     if (!o || !["completed", "disputed", "delivered"].includes(o.status)) return;
+    if (o.escrow_status === "on_hold") return; // admin hold blocks auto-release
     await txEscrowRelease(orderId, o.seller_id, o.seller_net_cents, o.commission_cents, o.order_no);
-    await run(`update orders set status = 'released', released_at = ? where id = ?`, [
-      now(),
-      orderId,
-    ]);
+    await run(
+      `update orders set status = 'released', escrow_status = 'released', released_at = ? where id = ?`,
+      [now(), orderId],
+    );
     const convId = await getOrCreateOrderConversation(orderId);
     await systemMessage(convId, note ?? `Warranty ended — escrow released to seller.`);
     await notify(
@@ -304,6 +305,77 @@ export function releaseOrder(orderId: string, note?: string): Promise<void> {
       "Escrow released",
       `${(o.seller_net_cents / 100).toFixed(2)} USDT from ${o.order_no} is now available.`,
       `/seller/wallet`,
+    );
+  });
+}
+
+/**
+ * Admin places an extended hold on an order's escrow — blocks auto-release
+ * until cleared. Manual release/refund still possible via admin tooling.
+ */
+export function adminEscrowHold(
+  orderId: string,
+  staffId: string,
+  reason: string,
+): Promise<void> {
+  return tx(async () => {
+    const o = await getOrderRow(orderId);
+    if (!o) return;
+    if (o.escrow_status !== "held" && o.escrow_status !== "on_hold")
+      throw new Error("Only active escrow can be placed on hold.");
+    await run(
+      `update orders set escrow_status = 'on_hold', escrow_hold_reason = ?, escrow_hold_by = ?, escrow_hold_at = ? where id = ?`,
+      [reason, staffId, now(), orderId],
+    );
+    const convId = await getOrCreateOrderConversation(orderId);
+    await systemMessage(convId, `Escrow placed on administrative hold: ${reason}`);
+    await notify(
+      o.seller_id,
+      "escrow_hold",
+      "Escrow on hold",
+      `Escrow for ${o.order_no} is on hold pending review.`,
+      `/seller/orders`,
+    );
+  });
+}
+
+/** Lift an administrative escrow hold; escrow returns to its prior state. */
+export function adminEscrowUnhold(orderId: string, staffId: string): Promise<void> {
+  return tx(async () => {
+    const o = await getOrderRow(orderId);
+    if (!o || o.escrow_status !== "on_hold") return;
+    await run(
+      `update orders set escrow_status = 'held', escrow_hold_reason = null, escrow_hold_by = null, escrow_hold_at = null where id = ?`,
+      [orderId],
+    );
+    const convId = await getOrCreateOrderConversation(orderId);
+    await systemMessage(convId, `Escrow hold lifted by staff (${staffId}).`);
+    await notify(
+      o.seller_id,
+      "escrow_hold",
+      "Escrow hold lifted",
+      `Escrow for ${o.order_no} is no longer on hold.`,
+      `/seller/orders`,
+    );
+  });
+}
+
+/** Extend warranty window — delays auto-release without changing escrow state. */
+export function adminExtendWarranty(
+  orderId: string,
+  additionalHours: number,
+  reason: string,
+): Promise<void> {
+  return tx(async () => {
+    const o = await getOrderRow(orderId);
+    if (!o) return;
+    if (!o.warranty_ends_at) throw new Error("Order has no active warranty window.");
+    const newEnd = o.warranty_ends_at + additionalHours * 3600_000;
+    await run(`update orders set warranty_ends_at = ? where id = ?`, [newEnd, orderId]);
+    const convId = await getOrCreateOrderConversation(orderId);
+    await systemMessage(
+      convId,
+      `Warranty extended by ${additionalHours}h. Reason: ${reason}`,
     );
   });
 }
