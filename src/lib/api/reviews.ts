@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { db } from "../server/db.server";
+import { q1, run, tx } from "../server/db.server";
 import { appContext } from "../server/app.server";
 import { fail, notify, now, uid } from "../server/core.server";
 import { requireUser } from "../server/auth.server";
@@ -14,53 +14,50 @@ export const leaveReview = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    appContext();
-    const user = requireUser();
-    const d = db();
-    const o = d
-      .prepare(
-        `select id, order_no, buyer_id, seller_id, product_id, status from orders where id = ?`,
-      )
-      .get(data.orderId) as
-      | {
-          id: string;
-          order_no: string;
-          buyer_id: string;
-          seller_id: string;
-          product_id: string;
-          status: string;
-        }
-      | undefined;
+    await appContext();
+    const user = await requireUser();
+    const o = await q1<{
+      id: string;
+      order_no: string;
+      buyer_id: string;
+      seller_id: string;
+      product_id: string;
+      status: string;
+    }>(`select id, order_no, buyer_id, seller_id, product_id, status from orders where id = ?`, [
+      data.orderId,
+    ]);
     if (!o || o.buyer_id !== user.id) fail("Order not found.");
     if (!["completed", "released"].includes(o!.status))
       fail("You can review an order after confirming delivery.");
-    if (d.prepare(`select 1 from reviews where order_id = ?`).get(data.orderId))
+    if (await q1(`select 1 as x from reviews where order_id = ?`, [data.orderId]))
       fail("You already reviewed this order.");
 
-    d.transaction(() => {
-      d.prepare(
+    await tx(async () => {
+      await run(
         `insert into reviews (id, order_id, buyer_id, seller_id, product_id, rating, comment, created_at) values (?,?,?,?,?,?,?,?)`,
-      ).run(
-        uid(),
-        data.orderId,
-        user.id,
-        o!.seller_id,
-        o!.product_id,
-        data.rating,
-        data.comment ?? null,
-        now(),
+        [
+          uid(),
+          data.orderId,
+          user.id,
+          o!.seller_id,
+          o!.product_id,
+          data.rating,
+          data.comment ?? null,
+          now(),
+        ],
       );
       // recompute seller rating
-      const agg = d
-        .prepare(`select avg(rating) a, count(*) c from reviews where seller_id = ?`)
-        .get(o!.seller_id) as { a: number; c: number };
-      d.prepare(`update users set rating = ?, rating_count = ? where id = ?`).run(
-        Math.round(agg.a * 100) / 100,
+      const agg = (await q1<{ a: number; c: number }>(
+        `select avg(rating) a, count(*) c from reviews where seller_id = ?`,
+        [o!.seller_id],
+      ))!;
+      await run(`update users set rating = ?, rating_count = ? where id = ?`, [
+        Math.round(Number(agg.a) * 100) / 100,
         agg.c,
         o!.seller_id,
-      );
-    })();
-    notify(
+      ]);
+    });
+    await notify(
       o!.seller_id,
       "review",
       "New review received",

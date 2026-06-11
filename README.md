@@ -5,18 +5,44 @@ A fully functional Z2U/G2G-style three-sided marketplace (buyer / seller / admin
 with auto-moderation, seller levels, wallets with an immutable double-entry ledger, and a
 complete admin back office.
 
-Built with **TanStack Start + React 19 + Tailwind 4 + SQLite (better-sqlite3)** — the
-entire backend runs in server functions, no external services required.
+Built with **TanStack Start + React 19 + Tailwind 4**. The backend runs entirely in
+server functions on a **dual-engine data layer**:
 
-## Run it
+| `DATABASE_URL` env var | Engine | Use case |
+|---|---|---|
+| not set | SQLite file in `./data` (zero config) | local development |
+| set to a Supabase/Postgres URL | Postgres via postgres.js | Lovable / production |
+
+Schema creation **and demo seeding happen automatically on first boot** on either
+engine — there is nothing to migrate by hand.
+
+## Run it locally (developer mode)
 
 ```bash
-bun install        # or npm install
-bun run dev        # starts on the configured port (Node runtime)
+npm install        # or bun install
+npm run dev        # starts the dev server (Node runtime)
 ```
 
 First boot creates `data/marketplace.db` and seeds categories, demo products with
 encrypted stock codes, and demo accounts.
+
+## Connect Supabase (for Lovable / hosted deployments)
+
+The published Lovable site runs on serverless hosting with no file storage, so it
+needs a hosted database. Steps (no SQL knowledge required):
+
+1. In **Supabase**: create a project (free tier is fine) and set a database password.
+2. In Supabase, click **Connect** (top bar) → copy the **Transaction pooler**
+   connection string — it looks like
+   `postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`.
+   Replace `[YOUR-PASSWORD]` with your database password.
+3. Give that string to the app as the `DATABASE_URL` environment variable / secret
+   (in Lovable: project settings → secrets / environment variables; locally: put it
+   in a `.env` file — see `.env.example`).
+4. Also set `STOCK_ENCRYPTION_KEY` to any long random string (protects stock codes).
+5. Open the site — on the first request the app creates all tables in Supabase and
+   seeds the demo accounts automatically. `supabase/migrations/0001_init.sql`
+   contains the same schema if you ever want to run it manually in the SQL editor.
 
 ### Demo accounts (password for all: `Password123!`)
 
