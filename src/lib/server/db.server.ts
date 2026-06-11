@@ -564,10 +564,40 @@ async function migrate(e: Engine): Promise<void> {
     `alter table disputes add column priority text not null default 'normal'`,
     `alter table disputes add column staff_owner text`,
     `alter table disputes add column last_activity_at ${big} not null default 0`,
+    // --- Phase 6: subscription sharing & digital goods ---
+    `alter table products add column product_kind text not null default 'one_time'`,
+    `alter table products add column subscription_provider text`,
+    `alter table products add column subscription_cycle_days integer not null default 30`,
+    `alter table products add column subscription_seats_total integer not null default 1`,
+    `alter table products add column download_size_mb integer not null default 0`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists
   }
+  await e
+    .exec(
+      `create table if not exists subscription_slots (
+        id text primary key,
+        product_id text not null,
+        seller_id text not null,
+        label text not null,
+        credentials_encrypted text not null,
+        status text not null default 'available',
+        buyer_id text,
+        order_id text,
+        started_at ${big},
+        expires_at ${big},
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(
+      `create index if not exists idx_subscription_slots on subscription_slots(product_id, status)`,
+    )
+    .catch(() => {});
+  const _addColumns2: string[] = [
+
   await e
     .exec(
       `create table if not exists dispute_evidence (
