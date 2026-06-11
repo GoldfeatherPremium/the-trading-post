@@ -260,10 +260,10 @@ export function refundOrder(orderId: string, refundCents: number, note: string):
       sellerKeepNet,
       o.order_no,
     );
-    await run(`update orders set status = 'refunded', cancel_reason = ? where id = ?`, [
-      note,
-      orderId,
-    ]);
+    await run(
+      `update orders set status = 'refunded', escrow_status = 'refunded', cancel_reason = ? where id = ?`,
+      [note, orderId],
+    );
     const convId = await getOrCreateOrderConversation(orderId);
     await systemMessage(
       convId,
