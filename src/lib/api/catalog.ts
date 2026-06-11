@@ -427,14 +427,8 @@ export const browseFacets = createServerFn({ method: "GET" })
     const [categories, items, delivery, tiers, priceRange] = await Promise.all([
       q<{ slug: string; name: string; icon: string; c: number }>(
         `select c.slug, c.name, c.icon, count(*) c ${FROM} where ${catCond.where}
-           group by c.id order by c order by c.sort`,
+           group by c.id order by c.sort`,
         catCond.params,
-      ).catch(() =>
-        q<{ slug: string; name: string; icon: string; c: number }>(
-          `select c.slug, c.name, c.icon, count(*) c ${FROM} where ${catCond.where}
-             group by c.id order by c desc`,
-          catCond.params,
-        ),
       ),
       q<{ id: string; name: string; c: number }>(
         `select ci.id, ci.name, count(*) c ${FROM} where ${itemCond.where} and ci.id is not null
