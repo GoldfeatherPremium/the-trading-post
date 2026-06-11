@@ -75,6 +75,31 @@ function BrowsePage() {
       }),
   });
 
+  const { data: facets } = useQuery({
+    placeholderData: keepPreviousData,
+    queryKey: ["browseFacets", search.q, search.category, search.item, search.delivery, search.inStock, search.minPrice, search.maxPrice],
+    queryFn: () =>
+      browseFacets({
+        data: {
+          category: search.category,
+          item: search.item,
+          q: search.q,
+          delivery: search.delivery,
+          inStock: search.inStock,
+          minPrice: search.minPrice,
+          maxPrice: search.maxPrice,
+        },
+      }),
+  });
+
+  // Did-you-mean: only fire when a query is set and results are sparse.
+  const { data: suggestData } = useQuery({
+    queryKey: ["dym", search.q],
+    queryFn: () => quickSearch({ data: { q: search.q ?? "" } }),
+    enabled: !!search.q && (data?.total ?? 0) < 3,
+    staleTime: 60_000,
+  });
+
   const setSearch = (patch: Partial<typeof search>) =>
     navigate({ search: { ...search, page: undefined, ...patch } });
 
