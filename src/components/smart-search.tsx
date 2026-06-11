@@ -234,7 +234,7 @@ export function SmartSearch({
 
       {open && (
         <div
-          className={`absolute left-0 right-0 top-full mt-2 z-50 bg-popover border border-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden ${
+          className={`absolute left-0 right-0 top-full mt-2 z-[70] bg-popover border border-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden ${
             isHero ? "max-h-[70vh]" : "max-h-[75vh]"
           } overflow-y-auto`}
         >

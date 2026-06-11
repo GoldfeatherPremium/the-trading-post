@@ -51,7 +51,7 @@ function Index() {
           Game currency, gift cards, keys, accounts & boosting. Every order escrow-protected, paid
           in USDT, released to sellers only after your warranty clears.
         </p>
-        <div className="animate-enter pt-2" style={{ animationDelay: "80ms" }}>
+        <div className="animate-enter pt-2 relative z-50" style={{ animationDelay: "80ms" }}>
           <SmartSearch variant="hero" />
         </div>
         <div
