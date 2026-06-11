@@ -238,7 +238,8 @@ export const getSellerStore = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const seller = await q1<PublicSeller>(
-      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
+      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at,
+              verification_tier, trust_score
        from users where lower(username) = lower(?) and seller_status = 'approved' and is_banned = 0`,
       [data.username],
     );
