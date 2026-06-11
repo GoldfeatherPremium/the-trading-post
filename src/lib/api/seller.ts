@@ -233,6 +233,17 @@ export const saveProduct = createServerFn({ method: "POST" })
       data.insuranceDays,
       id,
     ]);
+    await run(
+      `update products set product_kind = ?, subscription_provider = ?, subscription_cycle_days = ?, subscription_seats_total = ?, download_size_mb = ? where id = ?`,
+      [
+        data.productKind,
+        data.subscriptionProvider ?? null,
+        data.subscriptionCycleDays,
+        data.subscriptionSeatsTotal,
+        data.downloadSizeMb,
+        id,
+      ],
+    );
     for (let i = 0; i < data.variants.length; i++) {
       const v = data.variants[i];
       await run(
