@@ -555,6 +555,11 @@ async function migrate(e: Engine): Promise<void> {
     `alter table users add column refund_count integer not null default 0`,
     `alter table users add column dispute_count integer not null default 0`,
     `alter table users add column avg_delivery_minutes integer not null default 0`,
+    // --- Phase 3: explicit escrow state machine ---
+    `alter table orders add column escrow_status text not null default 'none'`,
+    `alter table orders add column escrow_hold_reason text`,
+    `alter table orders add column escrow_hold_by text`,
+    `alter table orders add column escrow_hold_at ${big}`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists

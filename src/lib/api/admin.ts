@@ -12,7 +12,15 @@ import {
   uid,
 } from "../server/core.server";
 import { requireAdmin, requireStaff } from "../server/auth.server";
-import { getOrderRow, refundOrder, releaseOrder, expireOrder } from "../server/lifecycle.server";
+import {
+  getOrderRow,
+  refundOrder,
+  releaseOrder,
+  expireOrder,
+  adminEscrowHold,
+  adminEscrowUnhold,
+  adminExtendWarranty,
+} from "../server/lifecycle.server";
 import { txAdjustment, txSetFreeze, txWithdrawalReversal } from "../server/money.server";
 
 type Row = Record<string, string | number | null>;
@@ -280,6 +288,35 @@ export const adminForceOrderAction = createServerFn({ method: "POST" })
       await releaseOrder(data.orderId, `Released by staff: ${data.note}`);
     }
     await audit(staff.id, `order.force_${data.action}`, "order", data.orderId, { note: data.note });
+    return { ok: true };
+  });
+
+export const adminEscrowAction = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      orderId: z.string(),
+      action: z.enum(["hold", "unhold", "extend"]),
+      hours: z.number().int().min(1).max(720).optional(),
+      reason: z.string().min(5).max(500),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const o = await getOrderRow(data.orderId);
+    if (!o) fail("Order not found.");
+    if (data.action === "hold") {
+      await adminEscrowHold(data.orderId, staff.id, data.reason);
+    } else if (data.action === "unhold") {
+      await adminEscrowUnhold(data.orderId, staff.id);
+    } else {
+      if (!data.hours) fail("Hours required for warranty extension.");
+      await adminExtendWarranty(data.orderId, data.hours!, data.reason);
+    }
+    await audit(staff.id, `escrow.${data.action}`, "order", data.orderId, {
+      reason: data.reason,
+      hours: data.hours,
+    });
     return { ok: true };
   });
 
