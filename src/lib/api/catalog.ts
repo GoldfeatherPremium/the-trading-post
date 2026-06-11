@@ -197,7 +197,11 @@ export const browseProducts = createServerFn({ method: "GET" })
     const whereSql = where.join(" and ");
     const [totalRow, itemRows] = await Promise.all([
       q1<{ c: number }>(
-        `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
+        `select count(*) c from products p
+           join categories c on c.id = p.category_id
+           join users u on u.id = p.seller_id
+           left join catalog_items ci on ci.id = p.item_id
+         where ${whereSql}`,
         params,
       ),
       q(
