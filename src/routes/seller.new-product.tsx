@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { AlertTriangle, BookOpen, ListChecks, Send } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { getHomeData } from "@/lib/api/catalog";
@@ -42,6 +43,7 @@ function ProductForm() {
     platform: "",
     requiredInfo: "",
   });
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     if (edit && mine) {
@@ -104,10 +106,20 @@ function ProductForm() {
         save.mutate();
       }}
     >
-      <h1 className="font-display text-2xl">{edit ? "EDIT LISTING" : "NEW LISTING"}</h1>
-      <p className="text-[11px] text-muted-foreground -mt-2">
-        Every new listing and edit goes through admin review before becoming visible.
-      </p>
+      <h1 className="font-display text-2xl">{edit ? "EDIT LISTING" : "CREATE LISTING"}</h1>
+      <div className="bg-yellow-500/10 border border-yellow-500/40 rounded-lg p-3 flex gap-2 text-[11px] leading-relaxed">
+        <AlertTriangle className="size-4 text-yellow-400 shrink-0 mt-0.5" />
+        <span>
+          Sellers are strictly prohibited from listing any product or service that violates local
+          laws or the underlying service's terms: stolen/carded gift cards, hacked accounts,
+          unauthorized credentials or shared-credential subscriptions. Violations lead to a
+          permanent ban with frozen funds. Every new listing and edit goes through staff review
+          before becoming visible.
+        </span>
+      </div>
+      <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
+        <BookOpen className="size-4 text-primary" /> General Info
+      </h2>
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -183,6 +195,14 @@ function ProductForm() {
         </div>
       </div>
 
+      <h2 className="text-sm font-bold flex items-center gap-2 pt-2">
+        <ListChecks className="size-4 text-primary" /> Delivery Option
+      </h2>
+      <div className="bg-secondary/50 border border-border rounded-lg p-3 text-[10px] text-muted-foreground leading-relaxed">
+        Set the delivery time cautiously — buyers expect every order completed within it. If you
+        miss the guarantee, the buyer can cancel for a full refund, your completion rate drops, and
+        repeated breaches affect your seller level.
+      </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Delivery type</Label>
@@ -198,14 +218,22 @@ function ProductForm() {
         </div>
         {form.deliveryType === "manual" && (
           <div className="space-y-1.5">
-            <Label className="text-xs">Delivery SLA (minutes)</Label>
-            <Input
-              type="number"
-              min={5}
-              max={14400}
+            <Label className="text-xs">Delivery ETA (guaranteed)</Label>
+            <select
               value={form.deliverySlaMinutes}
               onChange={(e) => setForm({ ...form, deliverySlaMinutes: Number(e.target.value) })}
-            />
+              className="w-full bg-secondary border border-border rounded-md px-2 py-2 text-xs h-9"
+            >
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={60}>1 hour</option>
+              <option value={180}>3 hours</option>
+              <option value={360}>6 hours</option>
+              <option value={720}>12 hours</option>
+              <option value={1440}>24 hours</option>
+              <option value={4320}>3 days</option>
+              <option value={10080}>7 days</option>
+            </select>
           </div>
         )}
       </div>
@@ -272,7 +300,26 @@ function ProductForm() {
         />
       </div>
 
-      <Button type="submit" className="font-bold" disabled={save.isPending}>
+      <h2 className="text-sm font-bold flex items-center gap-2 pt-2">
+        <Send className="size-4 text-primary" /> Publish
+      </h2>
+      <label className="flex items-start gap-2 text-[11px] text-muted-foreground leading-relaxed cursor-pointer">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          I have read and agree to the seller policy and prohibited items rules. I confirm I am
+          authorized to sell this product and it does not violate the underlying service's terms.
+        </span>
+      </label>
+      <Button
+        type="submit"
+        className="font-bold w-full sm:w-auto"
+        disabled={save.isPending || !agreed}
+      >
         {save.isPending ? "Submitting…" : edit ? "Save & resubmit for review" : "Submit for review"}
       </Button>
     </form>

@@ -13,7 +13,9 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as SellerRouteImport } from './routes/seller'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MenuRouteImport } from './routes/menu'
 import { Route as FavoritesRouteImport } from './routes/favorites'
+import { Route as DisputesRouteImport } from './routes/disputes'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -65,9 +67,19 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MenuRoute = MenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FavoritesRoute = FavoritesRouteImport.update({
   id: '/favorites',
   path: '/favorites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisputesRoute = DisputesRouteImport.update({
+  id: '/disputes',
+  path: '/disputes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -228,7 +240,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/disputes': typeof DisputesRoute
   '/favorites': typeof FavoritesRoute
+  '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
@@ -264,7 +278,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/disputes': typeof DisputesRoute
   '/favorites': typeof FavoritesRoute
+  '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/wallet': typeof WalletRoute
@@ -301,7 +317,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/disputes': typeof DisputesRoute
   '/favorites': typeof FavoritesRoute
+  '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
@@ -340,7 +358,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/disputes'
     | '/favorites'
+    | '/menu'
     | '/notifications'
     | '/sell'
     | '/seller'
@@ -376,7 +396,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/disputes'
     | '/favorites'
+    | '/menu'
     | '/notifications'
     | '/sell'
     | '/wallet'
@@ -412,7 +434,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/disputes'
     | '/favorites'
+    | '/menu'
     | '/notifications'
     | '/sell'
     | '/seller'
@@ -450,7 +474,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   ChatRoute: typeof ChatRoute
+  DisputesRoute: typeof DisputesRoute
   FavoritesRoute: typeof FavoritesRoute
+  MenuRoute: typeof MenuRoute
   NotificationsRoute: typeof NotificationsRoute
   SellRoute: typeof SellRoute
   SellerRoute: typeof SellerRouteWithChildren
@@ -492,11 +518,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/menu': {
+      id: '/menu'
+      path: '/menu'
+      fullPath: '/menu'
+      preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/favorites': {
       id: '/favorites'
       path: '/favorites'
       fullPath: '/favorites'
       preLoaderRoute: typeof FavoritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disputes': {
+      id: '/disputes'
+      path: '/disputes'
+      fullPath: '/disputes'
+      preLoaderRoute: typeof DisputesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -774,7 +814,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   ChatRoute: ChatRoute,
+  DisputesRoute: DisputesRoute,
   FavoritesRoute: FavoritesRoute,
+  MenuRoute: MenuRoute,
   NotificationsRoute: NotificationsRoute,
   SellRoute: SellRoute,
   SellerRoute: SellerRouteWithChildren,

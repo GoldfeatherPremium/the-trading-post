@@ -124,3 +124,25 @@ export const payWithWallet = createServerFn({ method: "POST" })
     await audit(user.id, "order.wallet_pay", "order", data.orderId);
     return { ok: true };
   });
+
+// ---------------------------------------------------------------------------
+// Dispute Center (buyer + seller view of own disputes)
+// ---------------------------------------------------------------------------
+export const listMyDisputes = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  const user = await requireUser();
+  const disputes = await q<Record<string, string | number | null>>(
+    `select dd.id, dd.order_id, dd.reason, dd.status, dd.resolution, dd.resolution_cents,
+            dd.created_at, dd.resolved_at, dd.opened_by,
+            o.order_no, o.product_title, o.total_cents, o.buyer_id, o.seller_id,
+            ub.username as buyer_name, us.username as seller_name
+     from disputes dd
+     join orders o on o.id = dd.order_id
+     join users ub on ub.id = o.buyer_id
+     join users us on us.id = o.seller_id
+     where o.buyer_id = ? or o.seller_id = ?
+     order by case dd.status when 'resolved' then 1 else 0 end, dd.created_at desc limit 100`,
+    [user.id, user.id],
+  );
+  return { disputes, myId: user.id };
+});

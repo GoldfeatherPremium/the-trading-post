@@ -13,6 +13,8 @@ import {
   Heart,
   Megaphone,
   Wrench,
+  Menu,
+  Scale,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useMe } from "@/hooks/use-me";
@@ -53,6 +55,13 @@ export function SiteHeader() {
         </div>
       )}
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+        <Link
+          to="/menu"
+          aria-label="Account menu"
+          className="size-9 rounded-md bg-secondary grid place-items-center hover:bg-border sm:hidden shrink-0"
+        >
+          <Menu className="size-4" />
+        </Link>
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <div className="size-8 bg-primary rounded flex items-center justify-center font-display text-xl text-primary-foreground">
             X
@@ -124,6 +133,12 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/favorites" })}>
                     <Heart className="size-4" /> Favorites
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/disputes" })}>
+                    <Scale className="size-4" /> Dispute Center
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/menu" })}>
+                    <Menu className="size-4" /> Account Hub
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/account" })}>
                     <User className="size-4" /> Account
