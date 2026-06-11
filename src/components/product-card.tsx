@@ -6,6 +6,7 @@ import { listFavoriteIds, toggleFavorite } from "@/lib/api/extras";
 import { useMe } from "@/hooks/use-me";
 import { productImage } from "@/lib/images";
 import { usdtShort } from "@/lib/format";
+import { VerificationBadge } from "./seller-badge";
 
 export function useFavorites() {
   const { me } = useMe();
