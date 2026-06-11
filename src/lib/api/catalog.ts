@@ -13,6 +13,8 @@ export interface PublicSeller {
   completion_rate: number;
   vacation_mode: number;
   created_at: number;
+  verification_tier: "unverified" | "verified" | "business" | "premium";
+  trust_score: number;
 }
 
 export interface PublicProduct {
