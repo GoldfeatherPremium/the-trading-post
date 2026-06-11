@@ -166,17 +166,76 @@ function AdminOrders() {
                       </Button>
                     </>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="h-7 text-[10px]"
-                      onClick={() => {
-                        setActionFor(o.id as string);
-                        setNote("");
-                      }}
-                    >
-                      Force action
-                    </Button>
+                    <>
+                      {o.escrow_status === "held" && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-[10px]"
+                          onClick={() => {
+                            const reason = window.prompt("Reason for escrow hold (audited):");
+                            if (reason && reason.length >= 5)
+                              escrow.mutate({
+                                orderId: o.id as string,
+                                action: "hold",
+                                reason,
+                              });
+                          }}
+                        >
+                          Hold escrow
+                        </Button>
+                      )}
+                      {o.escrow_status === "on_hold" && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-[10px]"
+                          onClick={() =>
+                            escrow.mutate({
+                              orderId: o.id as string,
+                              action: "unhold",
+                              reason: "Hold lifted",
+                            })
+                          }
+                        >
+                          Lift hold
+                        </Button>
+                      )}
+                      {(o.escrow_status === "held" || o.escrow_status === "on_hold") &&
+                        o.warranty_ends_at && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-[10px]"
+                            onClick={() => {
+                              const h = Number(window.prompt("Extend warranty by how many hours?"));
+                              if (!h || h < 1) return;
+                              const reason =
+                                window.prompt("Reason (audited):") ?? "Manual extension";
+                              if (reason.length < 5) return;
+                              escrow.mutate({
+                                orderId: o.id as string,
+                                action: "extend",
+                                hours: h,
+                                reason,
+                              });
+                            }}
+                          >
+                            Extend
+                          </Button>
+                        )}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 text-[10px]"
+                        onClick={() => {
+                          setActionFor(o.id as string);
+                          setNote("");
+                        }}
+                      >
+                        Force action
+                      </Button>
+                    </>
                   )}
                 </span>
               </div>
