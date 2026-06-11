@@ -458,9 +458,8 @@ function SectionHeader({
       </div>
       {link && (
         <Link
-          to={link.to}
-          // @ts-expect-error generic search forward
-          search={link.search}
+          to={link.to as "/browse"}
+          search={(link.search ?? {}) as never}
           className="text-[10px] text-primary font-bold tracking-widest flex items-center gap-1 hover:gap-1.5 transition-all"
         >
           {link.label} <ArrowUpRight className="size-3" />
