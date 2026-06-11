@@ -27,6 +27,7 @@ import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SellerWalletRouteImport } from './routes/seller.wallet'
 import { Route as SellerVerificationRouteImport } from './routes/seller.verification'
+import { Route as SellerSubscriptionsRouteImport } from './routes/seller.subscriptions'
 import { Route as SellerReviewsRouteImport } from './routes/seller.reviews'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
 import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
@@ -139,6 +140,11 @@ const SellerWalletRoute = SellerWalletRouteImport.update({
 const SellerVerificationRoute = SellerVerificationRouteImport.update({
   id: '/verification',
   path: '/verification',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerSubscriptionsRoute = SellerSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
   getParentRoute: () => SellerRoute,
 } as any)
 const SellerReviewsRoute = SellerReviewsRouteImport.update({
@@ -293,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
   '/admin/': typeof AdminIndexRoute
@@ -334,6 +341,7 @@ export interface FileRoutesByTo {
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
   '/admin': typeof AdminIndexRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
   '/admin/': typeof AdminIndexRoute
@@ -423,6 +432,7 @@ export interface FileRouteTypes {
     | '/seller/orders'
     | '/seller/products'
     | '/seller/reviews'
+    | '/seller/subscriptions'
     | '/seller/verification'
     | '/seller/wallet'
     | '/admin/'
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/seller/orders'
     | '/seller/products'
     | '/seller/reviews'
+    | '/seller/subscriptions'
     | '/seller/verification'
     | '/seller/wallet'
     | '/admin'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/seller/orders'
     | '/seller/products'
     | '/seller/reviews'
+    | '/seller/subscriptions'
     | '/seller/verification'
     | '/seller/wallet'
     | '/admin/'
@@ -662,6 +674,13 @@ declare module '@tanstack/react-router' {
       path: '/verification'
       fullPath: '/seller/verification'
       preLoaderRoute: typeof SellerVerificationRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/subscriptions': {
+      id: '/seller/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/seller/subscriptions'
+      preLoaderRoute: typeof SellerSubscriptionsRouteImport
       parentRoute: typeof SellerRoute
     }
     '/seller/reviews': {
@@ -881,6 +900,7 @@ interface SellerRouteChildren {
   SellerOrdersRoute: typeof SellerOrdersRoute
   SellerProductsRoute: typeof SellerProductsRoute
   SellerReviewsRoute: typeof SellerReviewsRoute
+  SellerSubscriptionsRoute: typeof SellerSubscriptionsRoute
   SellerVerificationRoute: typeof SellerVerificationRoute
   SellerWalletRoute: typeof SellerWalletRoute
   SellerIndexRoute: typeof SellerIndexRoute
@@ -892,6 +912,7 @@ const SellerRouteChildren: SellerRouteChildren = {
   SellerOrdersRoute: SellerOrdersRoute,
   SellerProductsRoute: SellerProductsRoute,
   SellerReviewsRoute: SellerReviewsRoute,
+  SellerSubscriptionsRoute: SellerSubscriptionsRoute,
   SellerVerificationRoute: SellerVerificationRoute,
   SellerWalletRoute: SellerWalletRoute,
   SellerIndexRoute: SellerIndexRoute,
@@ -924,3 +945,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
