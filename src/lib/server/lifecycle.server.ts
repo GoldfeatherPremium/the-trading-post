@@ -195,6 +195,7 @@ export function completeOrder(orderId: string, auto: boolean): Promise<void> {
       [t, warrantyEndsAt, orderId],
     );
     await run(`update users set total_sales = total_sales + 1 where id = ?`, [o.seller_id]);
+    await recomputeSellerTrust(o.seller_id);
     const convId = await getOrCreateOrderConversation(orderId);
     await systemMessage(
       convId,
