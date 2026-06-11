@@ -81,6 +81,32 @@ export const createOrder = createServerFn({ method: "POST" })
     if (seller.vacation_mode || seller.is_banned)
       fail("This seller is currently not accepting orders.");
 
+    // --- Phase 7: region gating ---
+    const region = await q1<{ allowed_countries: string | null; blocked_countries: string | null }>(
+      `select allowed_countries, blocked_countries from products where id = ?`,
+      [p!.id],
+    );
+    const parseList = (s: string | null) => {
+      if (!s) return [] as string[];
+      try {
+        const v = JSON.parse(s);
+        return Array.isArray(v) ? v.map((x) => String(x).toUpperCase()) : [];
+      } catch {
+        return [];
+      }
+    };
+    const allowed = parseList(region?.allowed_countries ?? null);
+    const blocked = parseList(region?.blocked_countries ?? null);
+    if (allowed.length || blocked.length) {
+      const buyerCountry = (user as unknown as { country?: string | null }).country?.toUpperCase();
+      if (!buyerCountry)
+        fail("Please set your country in Account settings before buying this product.");
+      if (allowed.length && !allowed.includes(buyerCountry!))
+        fail("This product is not available in your country.");
+      if (blocked.includes(buyerCountry!))
+        fail("This product is not available in your country.");
+    }
+
     // velocity limit: max 5 open unpaid orders per buyer
     const openUnpaid = (await q1<{ c: number }>(
       `select count(*) c from orders where buyer_id = ? and status = 'awaiting_payment'`,
