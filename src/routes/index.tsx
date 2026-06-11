@@ -9,10 +9,6 @@ import {
   TrendingUp,
   Sparkles,
   ArrowUpRight,
-  Coins,
-  Gift,
-  Key,
-  Gamepad2,
   History,
 } from "lucide-react";
 import { getHomeData } from "@/lib/api/catalog";
