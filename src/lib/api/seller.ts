@@ -339,31 +339,55 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
        where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
       [user.id, t - period],
     );
-  const [today, week, month, wallet, needsDelivery, openDisputes, lowStock, paidOrders] =
-    await Promise.all([
-      sales(dayMs),
-      sales(7 * dayMs),
-      sales(30 * dayMs),
-      getWallet(user.id),
-      q1<{ c: number }>(
-        `select count(*) c from orders where seller_id = ? and status in ('paid','delivering')`,
-        [user.id],
-      ),
-      q1<{ c: number }>(
-        `select count(*) c from disputes dd join orders o on o.id = dd.order_id where o.seller_id = ? and dd.status != 'resolved'`,
-        [user.id],
-      ),
-      q<{ id: string; title: string; stock_count: number }>(
-        `select id, title, stock_count from products where seller_id = ? and delivery_type = 'auto'
+  const [
+    today,
+    week,
+    month,
+    wallet,
+    needsDelivery,
+    openDisputes,
+    lowStock,
+    paidOrders,
+    topProducts,
+  ] = await Promise.all([
+    sales(dayMs),
+    sales(7 * dayMs),
+    sales(30 * dayMs),
+    getWallet(user.id),
+    q1<{ c: number }>(
+      `select count(*) c from orders where seller_id = ? and status in ('paid','delivering')`,
+      [user.id],
+    ),
+    q1<{ c: number }>(
+      `select count(*) c from disputes dd join orders o on o.id = dd.order_id where o.seller_id = ? and dd.status != 'resolved'`,
+      [user.id],
+    ),
+    q<{ id: string; title: string; stock_count: number }>(
+      `select id, title, stock_count from products where seller_id = ? and delivery_type = 'auto'
        and status in ('active','out_of_stock') and stock_count <= 5 order by stock_count`,
-        [user.id],
-      ),
-      q<{ paid_at: number; seller_net_cents: number }>(
-        `select paid_at, seller_net_cents from orders
+      [user.id],
+    ),
+    q<{ paid_at: number; seller_net_cents: number }>(
+      `select paid_at, seller_net_cents from orders
        where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
-        [user.id, t - 13 * dayMs],
-      ),
-    ]);
+      [user.id, t - 13 * dayMs],
+    ),
+    q<{
+      id: string;
+      title: string;
+      views: number;
+      sold_count: number;
+      price_cents: number;
+      stock_count: number;
+      status: string;
+      delivery_type: string;
+    }>(
+      `select id, title, views, sold_count, price_cents, stock_count, status, delivery_type
+         from products where seller_id = ? and status in ('active','out_of_stock','paused')
+         order by sold_count desc limit 6`,
+      [user.id],
+    ),
+  ]);
   const daily: Array<{ day: string; sales: number; orders: number }> = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(t - i * dayMs);
@@ -376,6 +400,7 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
   }
   return {
     daily,
+    topProducts,
     today: today!,
     week: week!,
     month: month!,

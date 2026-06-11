@@ -95,6 +95,46 @@ function SellerOverview() {
         ))}
       </div>
 
+      {data.topProducts.length > 0 && (
+        <div className="bg-card border border-border rounded-lg p-4">
+          <h2 className="text-xs font-bold tracking-widest text-muted-foreground mb-2">
+            PRODUCT PERFORMANCE
+          </h2>
+          <div className="space-y-1">
+            <div className="grid grid-cols-[1fr_60px_60px_70px_60px] gap-2 text-[9px] font-bold text-muted-foreground tracking-widest pb-1 border-b border-border">
+              <span>PRODUCT</span>
+              <span className="text-right">VIEWS</span>
+              <span className="text-right">SOLD</span>
+              <span className="text-right">CONV.</span>
+              <span className="text-right">STOCK</span>
+            </div>
+            {data.topProducts.map((tp) => {
+              const conv = tp.views > 0 ? ((tp.sold_count / tp.views) * 100).toFixed(1) : "—";
+              return (
+                <div
+                  key={tp.id}
+                  className="grid grid-cols-[1fr_60px_60px_70px_60px] gap-2 text-xs py-1 border-b border-border/40 last:border-0 items-center"
+                >
+                  <span className="truncate font-bold">{tp.title}</span>
+                  <span className="text-right font-mono text-muted-foreground">{tp.views}</span>
+                  <span className="text-right font-mono">{tp.sold_count}</span>
+                  <span
+                    className={`text-right font-mono ${Number(conv) >= 5 ? "text-accent" : "text-muted-foreground"}`}
+                  >
+                    {conv}%
+                  </span>
+                  <span
+                    className={`text-right font-mono ${tp.delivery_type === "auto" && tp.stock_count <= 5 ? "text-yellow-400" : "text-muted-foreground"}`}
+                  >
+                    {tp.delivery_type === "auto" ? tp.stock_count : "∞"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {(data.needsDelivery > 0 || data.openDisputes > 0) && (
         <div className="grid sm:grid-cols-2 gap-3">
           {data.needsDelivery > 0 && (

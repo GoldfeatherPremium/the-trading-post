@@ -130,7 +130,37 @@ export function WalletView() {
       )}
 
       <div className="bg-card border border-border rounded-lg p-4">
-        <h2 className="text-xs font-bold tracking-widest mb-2">LEDGER</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-bold tracking-widest">LEDGER</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[10px]"
+            disabled={data.ledger.length === 0}
+            onClick={() => {
+              const rows = [
+                ["date", "type", "amount_usdt", "balance_after_usdt", "note"],
+                ...data.ledger.map((l) => [
+                  new Date(l.created_at).toISOString(),
+                  l.type,
+                  (l.amount_cents / 100).toFixed(2),
+                  (l.balance_after_cents / 100).toFixed(2),
+                  `"${(l.note ?? "").replaceAll('"', '""')}"`,
+                ]),
+              ];
+              const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], {
+                type: "text/csv",
+              });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = `ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }}
+          >
+            Export CSV
+          </Button>
+        </div>
         {data.ledger.length === 0 && (
           <p className="text-xs text-muted-foreground">No transactions yet.</p>
         )}
