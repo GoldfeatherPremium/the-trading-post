@@ -480,7 +480,7 @@ export function schemaSql(dialect: "sqlite" | "postgres"): string {
     created_at ${big} not null
   );
 
-  -- allowed sub-categories per item; no rows = all categories allowed
+  -- allowed sub-categories per item (no rows = all categories allowed)
   create table if not exists catalog_item_categories (
     item_id text not null references catalog_items(id),
     category_id text not null references categories(id),
@@ -525,8 +525,13 @@ export function schemaSql(dialect: "sqlite" | "postgres"): string {
 async function migrate(e: Engine): Promise<void> {
   const dialect = isPostgres() ? "postgres" : "sqlite";
   if (dialect === "postgres") {
+    // strip line comments first (a ";" inside a comment would corrupt the split)
+    const cleaned = schemaSql("postgres")
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
     // run statements one by one so partial application is idempotent
-    for (const stmt of schemaSql("postgres").split(";")) {
+    for (const stmt of cleaned.split(";")) {
       const s = stmt.trim();
       if (s) await e.exec(s);
     }
