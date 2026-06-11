@@ -1,5 +1,13 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import { LayoutDashboard, Package, ListOrdered, Wallet, Star, ShieldCheck } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  ListOrdered,
+  Wallet,
+  Star,
+  ShieldCheck,
+  Repeat,
+} from "lucide-react";
 import { PageShell } from "@/components/shell";
 import { useMe } from "@/hooks/use-me";
 
@@ -12,6 +20,7 @@ const NAV = [
   { to: "/seller", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/seller/products", label: "Products", icon: Package },
   { to: "/seller/orders", label: "Orders", icon: ListOrdered },
+  { to: "/seller/subscriptions", label: "Subscriptions", icon: Repeat },
   { to: "/seller/wallet", label: "Wallet", icon: Wallet },
   { to: "/seller/reviews", label: "Reviews", icon: Star },
   { to: "/seller/verification", label: "Verification", icon: ShieldCheck },

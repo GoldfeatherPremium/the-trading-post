@@ -100,6 +100,13 @@ const productInput = z.object({
   region: z.string().max(40).optional(),
   platform: z.string().max(40).optional(),
   requiredInfo: z.string().max(500).optional(),
+  productKind: z
+    .enum(["one_time", "subscription_slot", "digital_download", "service"])
+    .default("one_time"),
+  subscriptionProvider: z.string().max(60).optional(),
+  subscriptionCycleDays: z.number().int().min(1).max(365).default(30),
+  subscriptionSeatsTotal: z.number().int().min(1).max(50).default(1),
+  downloadSizeMb: z.number().int().min(0).max(50_000).default(0),
 });
 
 const MAX_ACTIVE_LISTINGS: Record<number, number> = { 1: 10, 2: 25, 3: 60, 4: 150, 5: 100_000 };
@@ -163,6 +170,17 @@ export const saveProduct = createServerFn({ method: "POST" })
         data.insuranceDays,
         data.productId,
       ]);
+      await run(
+        `update products set product_kind = ?, subscription_provider = ?, subscription_cycle_days = ?, subscription_seats_total = ?, download_size_mb = ? where id = ?`,
+        [
+          data.productKind,
+          data.subscriptionProvider ?? null,
+          data.subscriptionCycleDays,
+          data.subscriptionSeatsTotal,
+          data.downloadSizeMb,
+          data.productId,
+        ],
+      );
       await run(`delete from product_variants where product_id = ?`, [data.productId]);
       for (let i = 0; i < data.variants.length; i++) {
         const v = data.variants[i];
@@ -215,6 +233,17 @@ export const saveProduct = createServerFn({ method: "POST" })
       data.insuranceDays,
       id,
     ]);
+    await run(
+      `update products set product_kind = ?, subscription_provider = ?, subscription_cycle_days = ?, subscription_seats_total = ?, download_size_mb = ? where id = ?`,
+      [
+        data.productKind,
+        data.subscriptionProvider ?? null,
+        data.subscriptionCycleDays,
+        data.subscriptionSeatsTotal,
+        data.downloadSizeMb,
+        id,
+      ],
+    );
     for (let i = 0; i < data.variants.length; i++) {
       const v = data.variants[i];
       await run(
