@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { updateProfile } from "@/lib/api/auth";
+import { getI18nBootstrap, updatePreferences } from "@/lib/api/i18n";
 import { useMe } from "@/hooks/use-me";
 import { PageShell } from "@/components/shell";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,35 @@ function AccountPage() {
   const { me } = useMe();
   const qc = useQueryClient();
   const [pw, setPw] = useState({ currentPassword: "", newPassword: "" });
+  const i18n = useQuery({ queryKey: ["i18nBootstrap"], queryFn: () => getI18nBootstrap() });
+  const [prefs, setPrefs] = useState({ locale: "en", preferred_currency: "USD", country: "" });
+
+  useEffect(() => {
+    if (me) {
+      setPrefs({
+        locale: (me as unknown as { locale?: string }).locale ?? "en",
+        preferred_currency:
+          (me as unknown as { preferred_currency?: string }).preferred_currency ?? "USD",
+        country: (me as unknown as { country?: string | null }).country ?? "",
+      });
+    }
+  }, [me]);
 
   const save = useMutation({
     mutationFn: (data: Parameters<typeof updateProfile>[0]["data"]) => updateProfile({ data }),
     onSuccess: () => {
       toast.success("Saved");
       setPw({ currentPassword: "", newPassword: "" });
+      qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const savePrefs = useMutation({
+    mutationFn: (data: Parameters<typeof updatePreferences>[0]["data"]) =>
+      updatePreferences({ data }),
+    onSuccess: () => {
+      toast.success("Preferences updated");
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -77,6 +101,72 @@ function AccountPage() {
             />
           </div>
         )}
+
+        <form
+          className="bg-card border border-border rounded-lg p-4 space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            savePrefs.mutate({
+              locale: prefs.locale,
+              preferred_currency: prefs.preferred_currency,
+              country: prefs.country || null,
+            });
+          }}
+        >
+          <h2 className="text-xs font-bold tracking-widest">REGION & LANGUAGE</h2>
+          <p className="text-[10px] text-muted-foreground">
+            Used for currency display and to enforce country-restricted listings at checkout.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-[10px]">Country</Label>
+              <select
+                className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs"
+                value={prefs.country}
+                onChange={(e) => setPrefs({ ...prefs, country: e.target.value })}
+              >
+                <option value="">— Not set —</option>
+                {i18n.data?.countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px]">Language</Label>
+              <select
+                className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs"
+                value={prefs.locale}
+                onChange={(e) => setPrefs({ ...prefs, locale: e.target.value })}
+              >
+                {i18n.data?.locales.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px]">Currency</Label>
+              <select
+                className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs"
+                value={prefs.preferred_currency}
+                onChange={(e) => setPrefs({ ...prefs, preferred_currency: e.target.value })}
+              >
+                {i18n.data?.rates.map((r) => (
+                  <option key={r.currency} value={r.currency}>
+                    {r.currency} {r.symbol ? `(${r.symbol})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Button size="sm" type="submit" disabled={savePrefs.isPending}>
+            Save preferences
+          </Button>
+        </form>
+
 
         <form
           className="bg-card border border-border rounded-lg p-4 space-y-3"
