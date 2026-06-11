@@ -35,6 +35,7 @@ import { Route as SUsernameRouteImport } from './routes/s.$username'
 import { Route as PayOrderIdRouteImport } from './routes/pay.$orderId'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
+import { Route as DisputesOrderIdRouteImport } from './routes/disputes.$orderId'
 import { Route as AdminVerificationsRouteImport } from './routes/admin.verifications'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -180,6 +181,11 @@ const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DisputesOrderIdRoute = DisputesOrderIdRouteImport.update({
+  id: '/$orderId',
+  path: '/$orderId',
+  getParentRoute: () => DisputesRoute,
+} as any)
 const AdminVerificationsRoute = AdminVerificationsRouteImport.update({
   id: '/verifications',
   path: '/verifications',
@@ -258,7 +264,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
-  '/disputes': typeof DisputesRoute
+  '/disputes': typeof DisputesRouteWithChildren
   '/favorites': typeof FavoritesRoute
   '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verifications': typeof AdminVerificationsRoute
+  '/disputes/$orderId': typeof DisputesOrderIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -299,7 +306,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
-  '/disputes': typeof DisputesRoute
+  '/disputes': typeof DisputesRouteWithChildren
   '/favorites': typeof FavoritesRoute
   '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verifications': typeof AdminVerificationsRoute
+  '/disputes/$orderId': typeof DisputesOrderIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -341,7 +349,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
-  '/disputes': typeof DisputesRoute
+  '/disputes': typeof DisputesRouteWithChildren
   '/favorites': typeof FavoritesRoute
   '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
@@ -361,6 +369,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verifications': typeof AdminVerificationsRoute
+  '/disputes/$orderId': typeof DisputesOrderIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -405,6 +414,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/verifications'
+    | '/disputes/$orderId'
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
@@ -445,6 +455,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/verifications'
+    | '/disputes/$orderId'
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
@@ -487,6 +498,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/verifications'
+    | '/disputes/$orderId'
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
@@ -510,7 +522,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   ChatRoute: typeof ChatRoute
-  DisputesRoute: typeof DisputesRoute
+  DisputesRoute: typeof DisputesRouteWithChildren
   FavoritesRoute: typeof FavoritesRoute
   MenuRoute: typeof MenuRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -708,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/disputes/$orderId': {
+      id: '/disputes/$orderId'
+      path: '/$orderId'
+      fullPath: '/disputes/$orderId'
+      preLoaderRoute: typeof DisputesOrderIdRouteImport
+      parentRoute: typeof DisputesRoute
+    }
     '/admin/verifications': {
       id: '/admin/verifications'
       path: '/verifications'
@@ -845,6 +864,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface DisputesRouteChildren {
+  DisputesOrderIdRoute: typeof DisputesOrderIdRoute
+}
+
+const DisputesRouteChildren: DisputesRouteChildren = {
+  DisputesOrderIdRoute: DisputesOrderIdRoute,
+}
+
+const DisputesRouteWithChildren = DisputesRoute._addFileChildren(
+  DisputesRouteChildren,
+)
+
 interface SellerRouteChildren {
   SellerNewProductRoute: typeof SellerNewProductRoute
   SellerOrdersRoute: typeof SellerOrdersRoute
@@ -877,7 +908,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   ChatRoute: ChatRoute,
-  DisputesRoute: DisputesRoute,
+  DisputesRoute: DisputesRouteWithChildren,
   FavoritesRoute: FavoritesRoute,
   MenuRoute: MenuRoute,
   NotificationsRoute: NotificationsRoute,
