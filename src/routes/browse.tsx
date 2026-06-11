@@ -27,6 +27,21 @@ export const Route = createFileRoute("/browse")({
   component: BrowsePage,
 });
 
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-primary/15 text-primary border border-primary/30 rounded-full pl-2 pr-1 py-0.5">
+      {label}
+      <button
+        onClick={onClear}
+        aria-label="Remove filter"
+        className="size-3.5 rounded-full hover:bg-primary/20 grid place-items-center"
+      >
+        <X className="size-2.5" />
+      </button>
+    </span>
+  );
+}
+
 function BrowsePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/browse" });
@@ -283,17 +298,3 @@ function BrowsePage() {
   );
 }
 
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-primary/15 text-primary border border-primary/30 rounded-full pl-2 pr-1 py-0.5">
-      {label}
-      <button
-        onClick={onClear}
-        aria-label="Remove filter"
-        className="size-3.5 rounded-full hover:bg-primary/20 grid place-items-center"
-      >
-        <X className="size-2.5" />
-      </button>
-    </span>
-  );
-}
