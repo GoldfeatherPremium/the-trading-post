@@ -28,55 +28,61 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-display: "Bebas Neue", sans-serif;
-  --font-body: "Inter", sans-serif;
+  --font-display: "Archivo Black", sans-serif;
+  --font-body: "Hind", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
 
 :root {
-  --radius: 0.5rem;
-  /* Z2U-like dark marketplace */
-  --background: oklch(0.145 0.01 286);
-  --foreground: oklch(0.967 0.003 286);
-  --card: oklch(0.18 0.01 286);
-  --card-foreground: oklch(0.967 0.003 286);
-  --popover: oklch(0.18 0.01 286);
-  --popover-foreground: oklch(0.967 0.003 286);
-  --primary: oklch(0.623 0.214 259); /* electric blue #3b82f6 */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.25 0.012 286);
-  --secondary-foreground: oklch(0.967 0.003 286);
-  --muted: oklch(0.25 0.012 286);
-  --muted-foreground: oklch(0.55 0.014 286);
-  --accent: oklch(0.696 0.17 162); /* emerald #10b981 */
-  --accent-foreground: oklch(0.145 0.01 286);
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.275 0.012 286); /* #27272a */
-  --input: oklch(0.275 0.012 286);
-  --ring: oklch(0.623 0.214 259);
+  --radius: 0.75rem;
+  /* Midnight Indigo palette */
+  --background: oklch(0.13 0.03 280);        /* #0a0a1a deep midnight */
+  --foreground: oklch(0.97 0.01 280);
+  --card: oklch(0.19 0.06 280);              /* #141432 */
+  --card-foreground: oklch(0.97 0.01 280);
+  --popover: oklch(0.17 0.05 280);
+  --popover-foreground: oklch(0.97 0.01 280);
+  --primary: oklch(0.58 0.24 277);           /* #4f46e5 electric indigo */
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-glow: oklch(0.72 0.22 290);      /* soft violet glow */
+  --secondary: oklch(0.24 0.06 280);         /* #1e1e5a-ish */
+  --secondary-foreground: oklch(0.97 0.01 280);
+  --muted: oklch(0.22 0.04 280);
+  --muted-foreground: oklch(0.66 0.04 280);
+  --accent: oklch(0.74 0.18 195);            /* cyan accent for prices/cta */
+  --accent-foreground: oklch(0.13 0.03 280);
+  --destructive: oklch(0.65 0.24 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.27 0.05 280);
+  --input: oklch(0.27 0.05 280);
+  --ring: oklch(0.58 0.24 277);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.58 0.24 277), oklch(0.72 0.22 290));
+  --gradient-aurora: radial-gradient(60% 80% at 20% 0%, oklch(0.58 0.24 277 / 0.35), transparent 60%),
+                     radial-gradient(50% 70% at 100% 10%, oklch(0.72 0.22 290 / 0.25), transparent 60%);
+  --shadow-glow: 0 20px 60px -20px oklch(0.58 0.24 277 / 0.5);
 }
 
 .dark {
-  --background: oklch(0.145 0.01 286);
-  --foreground: oklch(0.967 0.003 286);
-  --card: oklch(0.18 0.01 286);
-  --card-foreground: oklch(0.967 0.003 286);
-  --popover: oklch(0.18 0.01 286);
-  --popover-foreground: oklch(0.967 0.003 286);
-  --primary: oklch(0.623 0.214 259);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.25 0.012 286);
-  --secondary-foreground: oklch(0.967 0.003 286);
-  --muted: oklch(0.25 0.012 286);
-  --muted-foreground: oklch(0.55 0.014 286);
-  --accent: oklch(0.696 0.17 162);
-  --accent-foreground: oklch(0.145 0.01 286);
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.275 0.012 286);
-  --input: oklch(0.275 0.012 286);
-  --ring: oklch(0.623 0.214 259);
+  --background: oklch(0.13 0.03 280);
+  --foreground: oklch(0.97 0.01 280);
+  --card: oklch(0.19 0.06 280);
+  --card-foreground: oklch(0.97 0.01 280);
+  --popover: oklch(0.17 0.05 280);
+  --popover-foreground: oklch(0.97 0.01 280);
+  --primary: oklch(0.58 0.24 277);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.06 280);
+  --secondary-foreground: oklch(0.97 0.01 280);
+  --muted: oklch(0.22 0.04 280);
+  --muted-foreground: oklch(0.66 0.04 280);
+  --accent: oklch(0.74 0.18 195);
+  --accent-foreground: oklch(0.13 0.03 280);
+  --destructive: oklch(0.65 0.24 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.27 0.05 280);
+  --input: oklch(0.27 0.05 280);
+  --ring: oklch(0.58 0.24 277);
 }
 
 @layer base {
@@ -94,7 +100,8 @@
 
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: 0.01em;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
   }
   .font-mono {
     font-family: var(--font-mono);
