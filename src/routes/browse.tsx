@@ -5,6 +5,9 @@ import { getHomeData, browseProducts, listCatalogItems } from "@/lib/api/catalog
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
+import { SmartSearch } from "@/components/smart-search";
+import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 
 const searchSchema = z.object({
   category: z.string().optional(),
@@ -13,6 +16,8 @@ const searchSchema = z.object({
   delivery: z.enum(["auto", "manual"]).optional(),
   sort: z.enum(["popular", "price_asc", "price_desc", "newest", "rating"]).optional(),
   inStock: z.boolean().optional(),
+  minPrice: z.number().optional(),
+  maxPrice: z.number().optional(),
   page: z.number().int().min(1).optional(),
 });
 
