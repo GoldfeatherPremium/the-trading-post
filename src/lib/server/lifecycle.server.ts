@@ -67,7 +67,10 @@ export function confirmPayment(orderId: string): Promise<void> {
     const o = await getOrderRow(orderId);
     if (!o || o.status !== "awaiting_payment") return;
     const t = now();
-    await run(`update orders set status = 'paid', paid_at = ? where id = ?`, [t, orderId]);
+    await run(
+      `update orders set status = 'paid', paid_at = ?, escrow_status = 'held' where id = ?`,
+      [t, orderId],
+    );
     await run(`update deposits set status = 'confirmed', confirmations = 20 where order_id = ?`, [
       orderId,
     ]);
