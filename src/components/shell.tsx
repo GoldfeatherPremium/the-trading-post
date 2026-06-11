@@ -16,9 +16,10 @@ import {
   Menu,
   Scale,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import { useMe } from "@/hooks/use-me";
 import { logout } from "@/lib/api/auth";
+import { SmartSearch } from "@/components/smart-search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +33,6 @@ export function SiteHeader() {
   const { me, unreadNotifications, unreadMessages, banner } = useMe();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [q, setQ] = useState("");
   const doLogout = useMutation({
     mutationFn: () => logout(),
     onSuccess: () => {
@@ -69,20 +69,9 @@ export function SiteHeader() {
           <span className="font-display text-2xl tracking-tight hidden sm:inline">X-VAULT</span>
         </Link>
 
-        <form
-          className="flex-1 max-w-md hidden md:block"
-          onSubmit={(e) => {
-            e.preventDefault();
-            navigate({ to: "/browse", search: { q: q || undefined } });
-          }}
-        >
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search products, games, sellers…"
-            className="w-full bg-secondary/60 border border-border rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
-          />
-        </form>
+        <div className="flex-1 max-w-md hidden md:block">
+          <SmartSearch variant="header" />
+        </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
           <Link

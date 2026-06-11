@@ -7,6 +7,7 @@ import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { usdtShort, timeAgo } from "@/lib/format";
 import { productImage } from "@/lib/images";
+import { SmartSearch } from "@/components/smart-search";
 import { History } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -50,6 +51,9 @@ function Index() {
           Game currency, gift cards, keys, accounts & boosting. Every order escrow-protected, paid
           in USDT, released to sellers only after your warranty clears.
         </p>
+        <div className="animate-enter pt-2" style={{ animationDelay: "80ms" }}>
+          <SmartSearch variant="hero" />
+        </div>
         <div
           className="flex justify-center gap-2 animate-enter"
           style={{ animationDelay: "100ms" }}

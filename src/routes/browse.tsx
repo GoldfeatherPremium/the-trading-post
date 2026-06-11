@@ -5,6 +5,9 @@ import { getHomeData, browseProducts, listCatalogItems } from "@/lib/api/catalog
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
+import { SmartSearch } from "@/components/smart-search";
+import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 
 const searchSchema = z.object({
   category: z.string().optional(),
@@ -13,6 +16,8 @@ const searchSchema = z.object({
   delivery: z.enum(["auto", "manual"]).optional(),
   sort: z.enum(["popular", "price_asc", "price_desc", "newest", "rating"]).optional(),
   inStock: z.boolean().optional(),
+  minPrice: z.number().optional(),
+  maxPrice: z.number().optional(),
   page: z.number().int().min(1).optional(),
 });
 
@@ -42,6 +47,8 @@ function BrowsePage() {
           delivery: search.delivery,
           sort: search.sort ?? "popular",
           inStock: search.inStock,
+          minPrice: search.minPrice,
+          maxPrice: search.maxPrice,
           page: search.page ?? 1,
         },
       }),
@@ -50,14 +57,42 @@ function BrowsePage() {
   const setSearch = (patch: Partial<typeof search>) =>
     navigate({ search: { ...search, page: undefined, ...patch } });
 
+  const [minP, setMinP] = useState(search.minPrice?.toString() ?? "");
+  const [maxP, setMaxP] = useState(search.maxPrice?.toString() ?? "");
+  useEffect(() => {
+    setMinP(search.minPrice?.toString() ?? "");
+    setMaxP(search.maxPrice?.toString() ?? "");
+  }, [search.minPrice, search.maxPrice]);
+  const applyPrice = () => {
+    const min = minP ? Number(minP) : undefined;
+    const max = maxP ? Number(maxP) : undefined;
+    setSearch({
+      minPrice: Number.isFinite(min) ? min : undefined,
+      maxPrice: Number.isFinite(max) ? max : undefined,
+    });
+  };
+  const hasFilters =
+    !!search.q ||
+    !!search.category ||
+    !!search.item ||
+    !!search.delivery ||
+    !!search.inStock ||
+    search.minPrice !== undefined ||
+    search.maxPrice !== undefined;
+  const activeItemName = catalog?.items.find((i) => i.id === search.item)?.name;
+
   return (
     <PageShell>
-      <h1 className="font-display text-3xl mb-4">
+      <h1 className="font-display text-3xl mb-3">
         {search.q
           ? `SEARCH: "${search.q}"`
           : (home?.categories.find((c) => c.slug === search.category)?.name.toUpperCase() ??
             "ALL PRODUCTS")}
       </h1>
+
+      <div className="mb-4">
+        <SmartSearch variant="hero" />
+      </div>
 
       {/* category pills */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3">
@@ -120,8 +155,88 @@ function BrowsePage() {
           />
           In stock
         </label>
+        <div className="flex items-center gap-1 bg-secondary border border-border rounded-md px-2 py-1">
+          <span className="text-muted-foreground text-[10px]">$</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            placeholder="min"
+            value={minP}
+            onChange={(e) => setMinP(e.target.value)}
+            onBlur={applyPrice}
+            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
+            className="w-14 bg-transparent focus:outline-none text-xs"
+          />
+          <span className="text-muted-foreground">–</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            placeholder="max"
+            value={maxP}
+            onChange={(e) => setMaxP(e.target.value)}
+            onBlur={applyPrice}
+            onKeyDown={(e) => e.key === "Enter" && applyPrice()}
+            className="w-14 bg-transparent focus:outline-none text-xs"
+          />
+        </div>
+        {hasFilters && (
+          <button
+            onClick={() =>
+              navigate({
+                search: {
+                  category: undefined,
+                  item: undefined,
+                  q: undefined,
+                  delivery: undefined,
+                  sort: undefined,
+                  inStock: undefined,
+                  minPrice: undefined,
+                  maxPrice: undefined,
+                  page: undefined,
+                },
+              })
+            }
+            className="text-[10px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
+            <X className="size-3" /> Clear
+          </button>
+        )}
         <span className="ml-auto text-muted-foreground">{data?.total ?? "…"} results</span>
       </div>
+
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-4">
+          {search.q && (
+            <FilterChip label={`"${search.q}"`} onClear={() => setSearch({ q: undefined })} />
+          )}
+          {search.category && (
+            <FilterChip
+              label={
+                home?.categories.find((c) => c.slug === search.category)?.name ?? search.category
+              }
+              onClear={() => setSearch({ category: undefined })}
+            />
+          )}
+          {activeItemName && (
+            <FilterChip label={activeItemName} onClear={() => setSearch({ item: undefined })} />
+          )}
+          {search.delivery && (
+            <FilterChip
+              label={search.delivery === "auto" ? "⚡ Instant" : "🕐 Manual"}
+              onClear={() => setSearch({ delivery: undefined })}
+            />
+          )}
+          {(search.minPrice !== undefined || search.maxPrice !== undefined) && (
+            <FilterChip
+              label={`$${search.minPrice ?? 0} – $${search.maxPrice ?? "∞"}`}
+              onClear={() => setSearch({ minPrice: undefined, maxPrice: undefined })}
+            />
+          )}
+          {search.inStock && (
+            <FilterChip label="In stock" onClear={() => setSearch({ inStock: undefined })} />
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -165,5 +280,20 @@ function BrowsePage() {
         </div>
       )}
     </PageShell>
+  );
+}
+
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-primary/15 text-primary border border-primary/30 rounded-full pl-2 pr-1 py-0.5">
+      {label}
+      <button
+        onClick={onClear}
+        aria-label="Remove filter"
+        className="size-3.5 rounded-full hover:bg-primary/20 grid place-items-center"
+      >
+        <X className="size-2.5" />
+      </button>
+    </span>
   );
 }
