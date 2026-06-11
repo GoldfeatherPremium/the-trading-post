@@ -146,7 +146,7 @@ export async function q<T = Record<string, unknown>>(sql: string, params?: Param
   try {
     return await (await getEngine()).q<T>(sql, params);
   } catch (e) {
-    console.error("[db] query failed:", (e as Error)?.stack ?? e, "engine:", isPostgres() ? "postgres" : "sqlite");
+    console.error("[db] q failed:", (e as Error)?.message, "sql:", sql, "params:", JSON.stringify(params));
     throw e;
   }
 }
@@ -159,7 +159,12 @@ export async function q1<T = Record<string, unknown>>(
 }
 
 export async function run(sql: string, params?: Params): Promise<void> {
-  return (await getEngine()).run(sql, params);
+  try {
+    return await (await getEngine()).run(sql, params);
+  } catch (e) {
+    console.error("[db] run failed:", (e as Error)?.message, "sql:", sql, "params:", JSON.stringify(params));
+    throw e;
+  }
 }
 
 export async function tx<T>(fn: () => Promise<T>): Promise<T> {
