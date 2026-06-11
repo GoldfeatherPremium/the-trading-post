@@ -200,8 +200,20 @@ function OrderPage() {
                   WARRANTY: {countdown(o.warranty_ends_at)} REMAINING
                 </span>
               )}
+              {o.escrow_status === "on_hold" && (
+                <span className="bg-destructive/15 text-destructive px-2 py-1 rounded font-bold">
+                  ESCROW ON HOLD
+                </span>
+              )}
             </div>
           </div>
+
+          {o.escrow_status === "on_hold" && o.escrow_hold_reason && (
+            <div className="bg-destructive/5 border border-destructive/30 rounded-lg p-3 text-xs">
+              <p className="font-bold text-destructive mb-0.5">Escrow on administrative hold</p>
+              <p className="text-muted-foreground">{o.escrow_hold_reason}</p>
+            </div>
+          )}
 
           {/* buyer info for seller */}
           {viewerIsSeller && o.buyer_info && (
