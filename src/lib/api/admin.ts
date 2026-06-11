@@ -132,6 +132,8 @@ export const reviewSellerApplication = createServerFn({ method: "POST" })
       await run(`update users set seller_status = 'approved', role = 'seller' where id = ?`, [
         app!.user_id,
       ]);
+      const { recomputeSellerTrust } = await import("../server/trust.server");
+      await recomputeSellerTrust(app!.user_id);
     } else {
       await run(`update users set seller_status = 'rejected' where id = ?`, [app!.user_id]);
     }
