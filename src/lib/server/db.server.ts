@@ -606,7 +606,6 @@ async function migrate(e: Engine): Promise<void> {
       `create index if not exists idx_dispute_messages on dispute_messages(dispute_id, created_at)`,
     )
     .catch(() => {});
-  const tail: string[] = [
 
   await e
     .exec(
