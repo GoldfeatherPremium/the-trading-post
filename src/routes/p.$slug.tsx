@@ -1,0 +1,306 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Zap, Clock, ShieldCheck, Star, MessageSquare, Minus, Plus } from "lucide-react";
+import { getProduct } from "@/lib/api/catalog";
+import { createOrder } from "@/lib/api/orders";
+import { startProductConversation } from "@/lib/api/chat";
+import { useMe } from "@/hooks/use-me";
+import { PageShell } from "@/components/shell";
+import { productImage } from "@/lib/images";
+import { usdt, usdtShort, timeAgo } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+
+export const Route = createFileRoute("/p/$slug")({
+  head: () => ({ meta: [{ title: "Product — X-VAULT" }] }),
+  component: ProductPage,
+});
+
+function ProductPage() {
+  const { slug } = Route.useParams();
+  const navigate = useNavigate();
+  const { me } = useMe();
+  const [qty, setQty] = useState(1);
+  const [buyerInfo, setBuyerInfo] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["product", slug],
+    queryFn: () => getProduct({ data: { slug } }),
+  });
+
+  const buy = useMutation({
+    mutationFn: () =>
+      createOrder({
+        data: {
+          productId: data!.product!.id,
+          qty,
+          buyerInfo: buyerInfo || undefined,
+          network: "TRC20",
+        },
+      }),
+    onSuccess: (r) => navigate({ to: "/pay/$orderId", params: { orderId: r.orderId } }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const chat = useMutation({
+    mutationFn: () => startProductConversation({ data: { productId: data!.product!.id } }),
+    onSuccess: (r) => navigate({ to: "/chat", search: { c: r.conversationId } }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (isLoading)
+    return (
+      <PageShell>
+        <div className="py-20 text-center text-muted-foreground">Loading…</div>
+      </PageShell>
+    );
+  const p = data?.product;
+  if (!p)
+    return (
+      <PageShell>
+        <div className="py-20 text-center space-y-3">
+          <p className="text-muted-foreground">This product is not available.</p>
+          <Link to="/browse" className="text-primary text-sm font-bold">
+            Browse the market →
+          </Link>
+        </div>
+      </PageShell>
+    );
+
+  const requireAuth = (fn: () => void) => {
+    if (!me) navigate({ to: "/auth", search: { redirect: `/p/${slug}` } });
+    else fn();
+  };
+  const outOfStock = p.delivery_type === "auto" && p.stock_count === 0;
+  const total = p.price_cents * qty;
+
+  return (
+    <PageShell>
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+        <div className="space-y-6">
+          <div className="aspect-[16/9] bg-secondary rounded-lg overflow-hidden border border-border">
+            <img
+              src={productImage(p.image_key)}
+              alt={p.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div>
+            <div className="flex flex-wrap gap-2 mb-2 text-[10px] font-bold">
+              <Link
+                to="/browse"
+                search={{ category: p.category_slug }}
+                className="bg-secondary px-2 py-1 rounded"
+              >
+                {p.category_name}
+              </Link>
+              {p.region && <span className="bg-secondary px-2 py-1 rounded">🌍 {p.region}</span>}
+              {p.platform && (
+                <span className="bg-secondary px-2 py-1 rounded">🎮 {p.platform}</span>
+              )}
+              {p.risk_tier === "high" && (
+                <span className="bg-yellow-500/15 text-yellow-400 px-2 py-1 rounded">
+                  HIGH-RISK · EXTENDED WARRANTY
+                </span>
+              )}
+            </div>
+            <h1 className="font-display text-3xl leading-tight">{p.title}</h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              {p.sold_count} sold · {p.views} views
+            </p>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-4">
+            <h2 className="text-xs font-bold tracking-widest text-muted-foreground mb-2">
+              DESCRIPTION
+            </h2>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed">{p.description}</p>
+          </div>
+
+          <div className="bg-card border border-accent/30 rounded-lg p-4 flex gap-3">
+            <ShieldCheck className="size-8 text-accent shrink-0" />
+            <div className="text-xs leading-relaxed">
+              <p className="font-bold text-accent mb-1">How escrow protects you</p>
+              <p className="text-muted-foreground">
+                Your USDT is held by X-VAULT — the seller never sees it until you confirm delivery{" "}
+                <b>and</b> your {p.warranty_hours}h warranty passes without a dispute. Problems?
+                Open a dispute and our team mediates with full refund power.
+              </p>
+            </div>
+          </div>
+
+          {/* Reviews */}
+          <div className="bg-card border border-border rounded-lg p-4">
+            <h2 className="text-xs font-bold tracking-widest text-muted-foreground mb-3">
+              REVIEWS ({data.reviews.length})
+            </h2>
+            {data.reviews.length === 0 && (
+              <p className="text-xs text-muted-foreground">No reviews yet.</p>
+            )}
+            <div className="space-y-4">
+              {data.reviews.map((r, i) => (
+                <div key={i} className="border-b border-border/60 pb-3 last:border-0">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-bold">{r.buyer}</span>
+                    <span className="text-yellow-400 flex">
+                      {Array.from({ length: r.rating }).map((_, j) => (
+                        <Star key={j} className="size-3 fill-current" />
+                      ))}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {timeAgo(r.created_at)}
+                    </span>
+                  </div>
+                  {r.comment && <p className="text-xs mt-1">{r.comment}</p>}
+                  {r.seller_reply && (
+                    <p className="text-[11px] mt-2 bg-secondary rounded-md p-2 text-muted-foreground">
+                      <b className="text-foreground">Seller:</b> {r.seller_reply}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Buy box */}
+        <div className="space-y-4 lg:sticky lg:top-20 self-start">
+          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl font-mono text-accent">{usdtShort(p.price_cents)}</span>
+              <span
+                className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 ${
+                  p.delivery_type === "auto"
+                    ? "bg-accent/15 text-accent"
+                    : "bg-blue-500/15 text-blue-400"
+                }`}
+              >
+                {p.delivery_type === "auto" ? (
+                  <Zap className="size-3" />
+                ) : (
+                  <Clock className="size-3" />
+                )}
+                {p.delivery_type === "auto"
+                  ? "INSTANT DELIVERY"
+                  : `DELIVERY ~${p.delivery_sla_minutes} MIN`}
+              </span>
+            </div>
+            <div className="text-[11px] text-muted-foreground space-y-1">
+              {p.delivery_type === "auto" && (
+                <p>
+                  Stock:{" "}
+                  <b className={p.stock_count > 0 ? "text-accent" : "text-destructive"}>
+                    {p.stock_count}
+                  </b>
+                </p>
+              )}
+              <p>
+                Warranty: <b className="text-foreground">{p.warranty_hours}h</b> after confirmation
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Qty</span>
+              <div className="flex items-center gap-2 bg-secondary rounded-md p-1">
+                <button
+                  className="size-7 grid place-items-center rounded hover:bg-border"
+                  onClick={() => setQty(Math.max(p.min_qty, qty - 1))}
+                >
+                  <Minus className="size-3" />
+                </button>
+                <span className="w-8 text-center text-sm font-mono">{qty}</span>
+                <button
+                  className="size-7 grid place-items-center rounded hover:bg-border"
+                  onClick={() =>
+                    setQty(
+                      Math.min(
+                        p.max_qty,
+                        p.delivery_type === "auto" ? Math.min(p.stock_count, qty + 1) : qty + 1,
+                      ),
+                    )
+                  }
+                >
+                  <Plus className="size-3" />
+                </button>
+              </div>
+              <span className="ml-auto text-sm font-mono">{usdt(total)}</span>
+            </div>
+
+            {p.delivery_type === "manual" && p.required_info && (
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold">
+                  Required info:{" "}
+                  <span className="font-normal text-muted-foreground">{p.required_info}</span>
+                </p>
+                <Textarea
+                  value={buyerInfo}
+                  onChange={(e) => setBuyerInfo(e.target.value)}
+                  placeholder="Enter the info the seller needs to deliver…"
+                  className="text-xs min-h-16"
+                />
+              </div>
+            )}
+
+            <Button
+              className="w-full font-bold tracking-wide"
+              disabled={outOfStock || buy.isPending}
+              onClick={() => requireAuth(() => buy.mutate())}
+            >
+              {outOfStock
+                ? "OUT OF STOCK"
+                : buy.isPending
+                  ? "Creating order…"
+                  : `BUY NOW · ${usdt(total)}`}
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full text-xs"
+              onClick={() => requireAuth(() => chat.mutate())}
+            >
+              <MessageSquare className="size-3.5" /> Chat with seller
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Pay with USDT · TRC-20 / BEP-20 · escrow protected
+            </p>
+          </div>
+
+          {/* Seller card */}
+          <Link
+            to="/s/$username"
+            params={{ username: p.seller.username }}
+            className="bg-card border border-border rounded-lg p-4 flex items-center gap-3 hover:border-primary/50"
+          >
+            <div className="size-11 rounded-full bg-primary/20 border border-primary/40 grid place-items-center text-sm font-bold text-primary uppercase">
+              {p.seller.username.slice(0, 2)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold truncate flex items-center gap-1.5">
+                {p.seller.username}
+                <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-bold">
+                  Lv.{p.seller.seller_level}
+                </span>
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                ★{" "}
+                {p.seller.rating > 0
+                  ? `${p.seller.rating.toFixed(1)} (${p.seller.rating_count})`
+                  : "new seller"}{" "}
+                · {p.seller.total_sales.toLocaleString()} sales ·{" "}
+                {p.seller.completion_rate.toFixed(0)}% completion
+              </p>
+            </div>
+            {p.seller.vacation_mode ? (
+              <span className="text-[9px] bg-yellow-500/15 text-yellow-400 px-2 py-1 rounded font-bold">
+                AWAY
+              </span>
+            ) : (
+              <span className="size-2 rounded-full bg-accent" title="online" />
+            )}
+          </Link>
+        </div>
+      </div>
+    </PageShell>
+  );
+}

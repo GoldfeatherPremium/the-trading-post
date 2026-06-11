@@ -1,0 +1,201 @@
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Bell,
+  MessageSquare,
+  ShieldCheck,
+  Store,
+  LogOut,
+  Package,
+  Wallet,
+  User,
+  Gavel,
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { useMe } from "@/hooks/use-me";
+import { logout } from "@/lib/api/auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export function SiteHeader() {
+  const { me, unreadNotifications, unreadMessages } = useMe();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [q, setQ] = useState("");
+  const doLogout = useMutation({
+    mutationFn: () => logout(),
+    onSuccess: () => {
+      qc.invalidateQueries();
+      navigate({ to: "/" });
+    },
+  });
+  const isStaff = me && ["admin", "support", "finance"].includes(me.role);
+
+  return (
+    <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-2 shrink-0">
+          <div className="size-8 bg-primary rounded flex items-center justify-center font-display text-xl text-primary-foreground">
+            X
+          </div>
+          <span className="font-display text-2xl tracking-tight hidden sm:inline">X-VAULT</span>
+        </Link>
+
+        <form
+          className="flex-1 max-w-md hidden md:block"
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate({ to: "/browse", search: { q: q || undefined } });
+          }}
+        >
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search products, games, sellers…"
+            className="w-full bg-secondary/60 border border-border rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
+          />
+        </form>
+
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Link
+            to="/browse"
+            className="text-xs font-bold px-3 py-2 rounded-md hover:bg-secondary text-foreground/80 hidden sm:block"
+          >
+            BROWSE
+          </Link>
+          {me ? (
+            <>
+              <Link
+                to="/chat"
+                className="relative size-9 rounded-full bg-secondary grid place-items-center hover:bg-border"
+              >
+                <MessageSquare className="size-4" />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold rounded-full min-w-4 h-4 px-1 grid place-items-center">
+                    {unreadMessages > 9 ? "9+" : unreadMessages}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to="/notifications"
+                className="relative size-9 rounded-full bg-secondary grid place-items-center hover:bg-border"
+              >
+                <Bell className="size-4" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-4 h-4 px-1 grid place-items-center">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </span>
+                )}
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="size-9 rounded-full bg-primary/20 border border-primary/40 grid place-items-center text-xs font-bold text-primary uppercase">
+                  {me.username.slice(0, 2)}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel className="text-xs">
+                    {me.username}
+                    <div className="text-[10px] text-muted-foreground font-normal">{me.email}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate({ to: "/orders" })}>
+                    <Package className="size-4" /> My Orders
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/wallet" })}>
+                    <Wallet className="size-4" /> Wallet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/account" })}>
+                    <User className="size-4" /> Account
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {me.seller_status === "approved" ? (
+                    <DropdownMenuItem onClick={() => navigate({ to: "/seller" })}>
+                      <Store className="size-4" /> Seller Dashboard
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => navigate({ to: "/sell" })}>
+                      <Store className="size-4" /> Become a Seller
+                    </DropdownMenuItem>
+                  )}
+                  {isStaff && (
+                    <DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
+                      <Gavel className="size-4" /> Admin Panel
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => doLogout.mutate()}>
+                    <LogOut className="size-4" /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-xs font-bold px-3 py-2 bg-primary text-primary-foreground rounded-md"
+            >
+              SIGN IN
+            </Link>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export function SiteFooter() {
+  return (
+    <footer className="bg-secondary/20 border-t border-border px-4 py-10 mt-12">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="size-5 text-accent" />
+          <span className="font-display text-2xl">X-VAULT</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs text-foreground/70">
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">
+              Marketplace
+            </h4>
+            <p>Escrow-protected trades</p>
+            <p>USDT payments (TRC-20 / BEP-20)</p>
+            <p>Instant auto-delivery</p>
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">
+              Sellers
+            </h4>
+            <p>8% base commission</p>
+            <p>Seller levels & limits</p>
+            <p>Fast USDT payouts</p>
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">
+              Trust
+            </h4>
+            <p>Warranty on every order</p>
+            <p>Dispute resolution team</p>
+            <p>Prohibited items policy enforced</p>
+          </div>
+        </div>
+        <p className="text-[10px] text-muted-foreground text-center pt-6 border-t border-border/60 tracking-wide">
+          © 2026 X-VAULT MARKETPLACE · DEMO BUILD — USDT PAYMENTS SIMULATED
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+export function PageShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <SiteHeader />
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">{children}</main>
+      <SiteFooter />
+    </div>
+  );
+}
