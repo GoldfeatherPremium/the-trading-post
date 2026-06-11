@@ -7,7 +7,7 @@ import {
   createDecipheriv,
   createHash,
 } from "node:crypto";
-import { db } from "./db.server";
+import { q1, run } from "./db.server";
 
 export const now = () => Date.now();
 export const uid = () => randomUUID();
@@ -86,33 +86,30 @@ export function slugify(title: string): string {
 }
 
 // ---------- notifications / audit ----------
-export function notify(userId: string, type: string, title: string, body: string, link?: string) {
-  db()
-    .prepare(
-      `insert into notifications (id, user_id, type, title, body, link, created_at) values (?,?,?,?,?,?,?)`,
-    )
-    .run(uid(), userId, type, title, body, link ?? null, now());
+export async function notify(
+  userId: string,
+  type: string,
+  title: string,
+  body: string,
+  link?: string,
+) {
+  await run(
+    `insert into notifications (id, user_id, type, title, body, link, created_at) values (?,?,?,?,?,?,?)`,
+    [uid(), userId, type, title, body, link ?? null, now()],
+  );
 }
 
-export function audit(
+export async function audit(
   actorId: string | null,
   action: string,
   entity?: string,
   entityId?: string,
   meta?: unknown,
 ) {
-  db()
-    .prepare(
-      `insert into audit_logs (actor_id, action, entity, entity_id, meta, created_at) values (?,?,?,?,?,?)`,
-    )
-    .run(
-      actorId,
-      action,
-      entity ?? null,
-      entityId ?? null,
-      meta ? JSON.stringify(meta) : null,
-      now(),
-    );
+  await run(
+    `insert into audit_logs (actor_id, action, entity, entity_id, meta, created_at) values (?,?,?,?,?,?)`,
+    [actorId, action, entity ?? null, entityId ?? null, meta ? JSON.stringify(meta) : null, now()],
+  );
 }
 
 // ---------- settings ----------
@@ -125,8 +122,8 @@ export interface SiteSettings {
   maintenance_mode: number;
 }
 
-export function getSettings(): SiteSettings {
-  return db().prepare(`select * from site_settings where id = 1`).get() as SiteSettings;
+export async function getSettings(): Promise<SiteSettings> {
+  return (await q1<SiteSettings>(`select * from site_settings where id = 1`))!;
 }
 
 // ---------- chat helpers ----------
@@ -148,33 +145,27 @@ export function automodCheck(body: string): string | null {
   return null;
 }
 
-export function systemMessage(conversationId: string, body: string) {
-  db()
-    .prepare(
-      `insert into messages (id, conversation_id, sender_id, body, is_system, created_at) values (?,?,null,?,1,?)`,
-    )
-    .run(uid(), conversationId, body, now());
-  db()
-    .prepare(`update conversations set last_message_at = ? where id = ?`)
-    .run(now(), conversationId);
+export async function systemMessage(conversationId: string, body: string) {
+  await run(
+    `insert into messages (id, conversation_id, sender_id, body, is_system, created_at) values (?,?,null,?,1,?)`,
+    [uid(), conversationId, body, now()],
+  );
+  await run(`update conversations set last_message_at = ? where id = ?`, [now(), conversationId]);
 }
 
-export function getOrCreateOrderConversation(orderId: string): string {
-  const d = db();
-  const existing = d.prepare(`select id from conversations where order_id = ?`).get(orderId) as
-    | { id: string }
-    | undefined;
+export async function getOrCreateOrderConversation(orderId: string): Promise<string> {
+  const existing = await q1<{ id: string }>(`select id from conversations where order_id = ?`, [
+    orderId,
+  ]);
   if (existing) return existing.id;
-  const o = d
-    .prepare(`select buyer_id, seller_id, product_id from orders where id = ?`)
-    .get(orderId) as {
-    buyer_id: string;
-    seller_id: string;
-    product_id: string;
-  };
+  const o = (await q1<{ buyer_id: string; seller_id: string; product_id: string }>(
+    `select buyer_id, seller_id, product_id from orders where id = ?`,
+    [orderId],
+  ))!;
   const id = uid();
-  d.prepare(
+  await run(
     `insert into conversations (id, order_id, product_id, buyer_id, seller_id, created_at) values (?,?,?,?,?,?)`,
-  ).run(id, orderId, o.product_id, o.buyer_id, o.seller_id, now());
+    [id, orderId, o.product_id, o.buyer_id, o.seller_id, now()],
+  );
   return id;
 }

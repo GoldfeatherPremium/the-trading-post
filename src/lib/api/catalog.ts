@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { db } from "../server/db.server";
+import { q, q1, run } from "../server/db.server";
 import { appContext } from "../server/app.server";
 
 export interface PublicSeller {
@@ -84,13 +84,8 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
 }
 
 export const getHomeData = createServerFn({ method: "GET" }).handler(async () => {
-  appContext();
-  const d = db();
-  const categories = d
-    .prepare(
-      `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
-    )
-    .all() as Array<{
+  await appContext();
+  const categories = await q<{
     id: string;
     name: string;
     slug: string;
@@ -98,37 +93,31 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async () =>
     default_warranty_hours: number;
     commission_pct: number;
     risk_tier: string;
-  }>;
+  }>(
+    `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
+  );
   const trending = (
-    d
-      .prepare(
-        `${productSelect} where p.status = 'active' order by p.sold_count desc, p.views desc limit 8`,
-      )
-      .all() as Record<string, unknown>[]
+    await q(
+      `${productSelect} where p.status = 'active' order by p.sold_count desc, p.views desc limit 8`,
+    )
   ).map(mapProduct);
   const newest = (
-    d
-      .prepare(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`)
-      .all() as Record<string, unknown>[]
+    await q(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`)
   ).map(mapProduct);
-  const topSellers = d
-    .prepare(
-      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
-       from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
-    )
-    .all() as PublicSeller[];
-  const recentSales = d
-    .prepare(
-      `select o.product_title, o.total_cents, o.created_at, u.username as buyer
-       from orders o join users u on u.id = o.buyer_id
-       where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
-    )
-    .all() as Array<{
+  const topSellers = await q<PublicSeller>(
+    `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
+     from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
+  );
+  const recentSales = await q<{
     product_title: string;
     total_cents: number;
     created_at: number;
     buyer: string;
-  }>;
+  }>(
+    `select o.product_title, o.total_cents, o.created_at, u.username as buyer
+     from orders o join users u on u.id = o.buyer_id
+     where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
+  );
   return { categories, trending, newest, topSellers, recentSales };
 });
 
@@ -146,31 +135,31 @@ export const browseProducts = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    appContext();
-    const d = db();
+    await appContext();
     const where: string[] = [`p.status = 'active'`];
-    const params: Record<string, unknown> = {};
+    const params: Array<string | number> = [];
     if (data.category) {
-      where.push(`c.slug = @category`);
-      params.category = data.category;
+      where.push(`c.slug = ?`);
+      params.push(data.category);
     }
     if (data.q) {
+      const like = `%${data.q.toLowerCase()}%`;
       where.push(
-        `(p.title like @q or p.description like @q or p.platform like @q or u.username like @q)`,
+        `(lower(p.title) like ? or lower(p.description) like ? or lower(coalesce(p.platform,'')) like ? or lower(u.username) like ?)`,
       );
-      params.q = `%${data.q}%`;
+      params.push(like, like, like, like);
     }
     if (data.delivery) {
-      where.push(`p.delivery_type = @delivery`);
-      params.delivery = data.delivery;
+      where.push(`p.delivery_type = ?`);
+      params.push(data.delivery);
     }
     if (data.minPrice !== undefined) {
-      where.push(`p.price_cents >= @minPrice`);
-      params.minPrice = Math.round(data.minPrice * 100);
+      where.push(`p.price_cents >= ?`);
+      params.push(Math.round(data.minPrice * 100));
     }
     if (data.maxPrice !== undefined) {
-      where.push(`p.price_cents <= @maxPrice`);
-      params.maxPrice = Math.round(data.maxPrice * 100);
+      where.push(`p.price_cents <= ?`);
+      params.push(Math.round(data.maxPrice * 100));
     }
     if (data.inStock) {
       where.push(`(p.delivery_type = 'manual' or p.stock_count > 0)`);
@@ -184,19 +173,15 @@ export const browseProducts = createServerFn({ method: "GET" })
     }[data.sort];
     const PAGE = 24;
     const whereSql = where.join(" and ");
-    const total = (
-      d
-        .prepare(
-          `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
-        )
-        .get(params) as { c: number }
-    ).c;
+    const total = (await q1<{ c: number }>(
+      `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
+      params,
+    ))!.c;
     const items = (
-      d
-        .prepare(
-          `${productSelect} where ${whereSql} order by ${order} limit ${PAGE} offset ${(data.page - 1) * PAGE}`,
-        )
-        .all(params) as Record<string, unknown>[]
+      await q(
+        `${productSelect} where ${whereSql} order by ${order} limit ${PAGE} offset ${(data.page - 1) * PAGE}`,
+        params,
+      )
     ).map(mapProduct);
     return { items, total, page: data.page, pageCount: Math.max(1, Math.ceil(total / PAGE)) };
   });
@@ -204,63 +189,55 @@ export const browseProducts = createServerFn({ method: "GET" })
 export const getProduct = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
-    appContext();
-    const d = db();
-    const row = d.prepare(`${productSelect} where p.slug = ?`).get(data.slug) as
-      | Record<string, unknown>
-      | undefined;
+    await appContext();
+    const row = await q1(`${productSelect} where p.slug = ?`, [data.slug]);
     if (!row) return { product: null, reviews: [] };
     const product = mapProduct(row);
     if (product.status !== "active" && product.status !== "out_of_stock")
       return { product: null, reviews: [] };
-    d.prepare(`update products set views = views + 1 where id = ?`).run(product.id);
-    const reviews = d
-      .prepare(
-        `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer
-         from reviews r join users u on u.id = r.buyer_id where r.product_id = ? order by r.created_at desc limit 30`,
-      )
-      .all(product.id) as Array<{
+    await run(`update products set views = views + 1 where id = ?`, [product.id]);
+    const reviews = await q<{
       rating: number;
       comment: string | null;
       seller_reply: string | null;
       created_at: number;
       buyer: string;
-    }>;
+    }>(
+      `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer
+       from reviews r join users u on u.id = r.buyer_id where r.product_id = ? order by r.created_at desc limit 30`,
+      [product.id],
+    );
     return { product, reviews };
   });
 
 export const getSellerStore = createServerFn({ method: "GET" })
   .inputValidator(z.object({ username: z.string() }))
   .handler(async ({ data }) => {
-    appContext();
-    const d = db();
-    const seller = d
-      .prepare(
-        `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
-         from users where lower(username) = lower(?) and seller_status = 'approved' and is_banned = 0`,
-      )
-      .get(data.username) as PublicSeller | undefined;
+    await appContext();
+    const seller = await q1<PublicSeller>(
+      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
+       from users where lower(username) = lower(?) and seller_status = 'approved' and is_banned = 0`,
+      [data.username],
+    );
     if (!seller) return { seller: null, products: [], reviews: [] };
     const products = (
-      d
-        .prepare(
-          `${productSelect} where p.seller_id = ? and p.status in ('active','out_of_stock') order by p.sold_count desc`,
-        )
-        .all(seller.id) as Record<string, unknown>[]
-    ).map(mapProduct);
-    const reviews = d
-      .prepare(
-        `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer, o.product_title
-         from reviews r join users u on u.id = r.buyer_id join orders o on o.id = r.order_id
-         where r.seller_id = ? order by r.created_at desc limit 50`,
+      await q(
+        `${productSelect} where p.seller_id = ? and p.status in ('active','out_of_stock') order by p.sold_count desc`,
+        [seller.id],
       )
-      .all(seller.id) as Array<{
+    ).map(mapProduct);
+    const reviews = await q<{
       rating: number;
       comment: string | null;
       seller_reply: string | null;
       created_at: number;
       buyer: string;
       product_title: string;
-    }>;
+    }>(
+      `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer, o.product_title
+       from reviews r join users u on u.id = r.buyer_id join orders o on o.id = r.order_id
+       where r.seller_id = ? order by r.created_at desc limit 50`,
+      [seller.id],
+    );
     return { seller, products, reviews };
   });
