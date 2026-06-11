@@ -560,10 +560,54 @@ async function migrate(e: Engine): Promise<void> {
     `alter table orders add column escrow_hold_reason text`,
     `alter table orders add column escrow_hold_by text`,
     `alter table orders add column escrow_hold_at ${big}`,
+    // --- Phase 5: dispute evidence vault & thread ---
+    `alter table disputes add column priority text not null default 'normal'`,
+    `alter table disputes add column staff_owner text`,
+    `alter table disputes add column last_activity_at ${big} not null default 0`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists
   }
+  await e
+    .exec(
+      `create table if not exists dispute_evidence (
+        id text primary key,
+        dispute_id text not null,
+        author_id text not null,
+        author_role text not null,
+        kind text not null,
+        title text not null,
+        body text,
+        url text,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(
+      `create index if not exists idx_dispute_evidence on dispute_evidence(dispute_id, created_at)`,
+    )
+    .catch(() => {});
+  await e
+    .exec(
+      `create table if not exists dispute_messages (
+        id text primary key,
+        dispute_id text not null,
+        author_id text not null,
+        author_role text not null,
+        body text not null,
+        is_internal integer not null default 0,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(
+      `create index if not exists idx_dispute_messages on dispute_messages(dispute_id, created_at)`,
+    )
+    .catch(() => {});
+  const tail: string[] = [
+
   await e
     .exec(
       `create table if not exists seller_verifications (
