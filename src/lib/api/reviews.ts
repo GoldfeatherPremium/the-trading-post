@@ -58,6 +58,7 @@ export const leaveReview = createServerFn({ method: "POST" })
         o!.seller_id,
       ]);
     });
+    await recomputeSellerTrust(o!.seller_id);
     await notify(
       o!.seller_id,
       "review",
