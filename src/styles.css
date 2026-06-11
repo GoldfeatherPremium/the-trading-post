@@ -28,9 +28,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: "Bebas Neue", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 :root {
@@ -42,17 +42,17 @@
   --card-foreground: oklch(0.967 0.003 286);
   --popover: oklch(0.18 0.01 286);
   --popover-foreground: oklch(0.967 0.003 286);
-  --primary: oklch(0.623 0.214 259);             /* electric blue #3b82f6 */
+  --primary: oklch(0.623 0.214 259); /* electric blue #3b82f6 */
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.25 0.012 286);
   --secondary-foreground: oklch(0.967 0.003 286);
   --muted: oklch(0.25 0.012 286);
   --muted-foreground: oklch(0.55 0.014 286);
-  --accent: oklch(0.696 0.17 162);               /* emerald #10b981 */
+  --accent: oklch(0.696 0.17 162); /* emerald #10b981 */
   --accent-foreground: oklch(0.145 0.01 286);
   --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.275 0.012 286);              /* #27272a */
+  --border: oklch(0.275 0.012 286); /* #27272a */
   --input: oklch(0.275 0.012 286);
   --ring: oklch(0.623 0.214 259);
 }
@@ -84,22 +84,41 @@
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
   }
 
-  .font-display { font-family: var(--font-display); letter-spacing: 0.01em; }
-  .font-mono { font-family: var(--font-mono); }
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.animate-enter { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-enter {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
