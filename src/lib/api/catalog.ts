@@ -159,11 +159,17 @@ export const browseProducts = createServerFn({ method: "GET" })
       params.push(data.item);
     }
     if (data.q) {
-      const like = `%${data.q.toLowerCase()}%`;
-      where.push(
-        `(lower(p.title) like ? or lower(p.description) like ? or lower(coalesce(p.platform,'')) like ? or lower(u.username) like ?)`,
-      );
-      params.push(like, like, like, like);
+      const tokens = tokenize(data.q);
+      const cols = ["p.title", "p.description", "coalesce(p.platform,'')", "u.username", "c.name", "coalesce(ci.name,'')"];
+      const { sql, params: sp } = buildSearchClause(tokens, cols);
+      if (tokens.length > 0) {
+        where.push(`(${sql})`);
+        params.push(...sp);
+      } else {
+        const like = `%${data.q.toLowerCase()}%`;
+        where.push(`(lower(p.title) like ? or lower(p.description) like ?)`);
+        params.push(like, like);
+      }
     }
     if (data.delivery) {
       where.push(`p.delivery_type = ?`);
