@@ -291,6 +291,35 @@ export const adminForceOrderAction = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminEscrowAction = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      orderId: z.string(),
+      action: z.enum(["hold", "unhold", "extend"]),
+      hours: z.number().int().min(1).max(720).optional(),
+      reason: z.string().min(5).max(500),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const o = await getOrderRow(data.orderId);
+    if (!o) fail("Order not found.");
+    if (data.action === "hold") {
+      await adminEscrowHold(data.orderId, staff.id, data.reason);
+    } else if (data.action === "unhold") {
+      await adminEscrowUnhold(data.orderId, staff.id);
+    } else {
+      if (!data.hours) fail("Hours required for warranty extension.");
+      await adminExtendWarranty(data.orderId, data.hours!, data.reason);
+    }
+    await audit(staff.id, `escrow.${data.action}`, "order", data.orderId, {
+      reason: data.reason,
+      hours: data.hours,
+    });
+    return { ok: true };
+  });
+
 // ---------------------------------------------------------------------------
 // Disputes center
 // ---------------------------------------------------------------------------
