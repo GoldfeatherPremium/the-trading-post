@@ -14,6 +14,7 @@ const NAV = [
   { to: "/seller/orders", label: "Orders", icon: ListOrdered },
   { to: "/seller/wallet", label: "Wallet", icon: Wallet },
   { to: "/seller/reviews", label: "Reviews", icon: Star },
+  { to: "/seller/verification", label: "Verification", icon: ShieldCheck },
 ];
 
 function SellerLayout() {
