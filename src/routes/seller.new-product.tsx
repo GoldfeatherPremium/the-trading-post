@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, BookOpen, ListChecks, Send } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { getHomeData } from "@/lib/api/catalog";
+import { getHomeData, listCatalogItems } from "@/lib/api/catalog";
+import { suggestItem } from "@/lib/api/seller";
 import { listMyProducts, saveProduct } from "@/lib/api/seller";
 import { IMAGE_KEYS, productImage } from "@/lib/images";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,22 @@ function ProductForm() {
     requiredInfo: "",
   });
   const [agreed, setAgreed] = useState(false);
+  const [itemId, setItemId] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestName, setSuggestName] = useState("");
+  const { data: catalog } = useQuery({
+    queryKey: ["catalogItems"],
+    queryFn: () => listCatalogItems(),
+  });
+  const suggest = useMutation({
+    mutationFn: () => suggestItem({ data: { name: suggestName } }),
+    onSuccess: () => {
+      toast.success("Request sent — admins will review it and you'll get a notification.");
+      setSuggesting(false);
+      setSuggestName("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   useEffect(() => {
     if (edit && mine) {
@@ -64,6 +81,7 @@ function ProductForm() {
           platform: (p.platform as string) ?? "",
           requiredInfo: (p.required_info as string) ?? "",
         });
+        setItemId((p.item_id as string) ?? "");
       }
     }
   }, [edit, mine]);
@@ -73,6 +91,7 @@ function ProductForm() {
       saveProduct({
         data: {
           productId: edit,
+          itemId: itemId || undefined,
           categoryId: form.categoryId,
           title: form.title,
           description: form.description,
@@ -121,9 +140,53 @@ function ProductForm() {
         <BookOpen className="size-4 text-primary" /> General Info
       </h2>
 
+      <div className="space-y-1.5">
+        <Label className="text-xs">Selling item (game / brand / service)</Label>
+        <select
+          value={itemId}
+          onChange={(e) => {
+            setItemId(e.target.value);
+            setForm({ ...form, categoryId: "" });
+          }}
+          className="w-full bg-secondary border border-border rounded-md px-2 py-2 text-xs h-9"
+        >
+          <option value="">— General (no specific item) —</option>
+          {catalog?.items.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="text-[10px] text-primary font-bold"
+          onClick={() => setSuggesting(!suggesting)}
+        >
+          Can't find it? Request a new item →
+        </button>
+        {suggesting && (
+          <div className="flex gap-2 pt-1">
+            <Input
+              placeholder="Item name (e.g. LinkedIn, Spotify, Valorant)"
+              value={suggestName}
+              onChange={(e) => setSuggestName(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={suggest.isPending || suggestName.trim().length < 2}
+              onClick={() => suggest.mutate()}
+            >
+              Send request
+            </Button>
+          </div>
+        )}
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Category</Label>
+          <Label className="text-xs">Sub-category</Label>
           <select
             required
             value={form.categoryId}
@@ -131,11 +194,17 @@ function ProductForm() {
             className="w-full bg-secondary border border-border rounded-md px-2 py-2 text-xs h-9"
           >
             <option value="">Select…</option>
-            {home?.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon} {c.name} ({c.commission_pct}% fee)
-              </option>
-            ))}
+            {home?.categories
+              .filter((c) => {
+                if (!itemId) return true;
+                const item = catalog?.items.find((i) => i.id === itemId);
+                return !item || item.categoryIds.length === 0 || item.categoryIds.includes(c.id);
+              })
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name} ({c.commission_pct}% fee)
+                </option>
+              ))}
           </select>
           {selectedCat?.risk_tier === "high" && (
             <p className="text-[10px] text-yellow-400">

@@ -109,6 +109,33 @@ export async function seedIfEmpty(): Promise<void> {
       );
     }
 
+    const items: Array<[string, string[]]> = [
+      // name, allowed category slugs (empty = all)
+      ["LinkedIn", ["subscriptions", "currency", "accounts", "boosting"]],
+      ["Steam", ["gift-cards", "software-keys", "items"]],
+      ["Netflix", ["subscriptions", "accounts"]],
+      ["PUBG Mobile", ["currency", "accounts", "boosting", "items"]],
+    ];
+    const itemIds: Record<string, string> = {};
+    for (let i = 0; i < items.length; i++) {
+      const [name, slugs] = items[i];
+      const id = uid();
+      itemIds[name] = id;
+      await run(`insert into catalog_items (id, name, slug, sort, created_at) values (?,?,?,?,?)`, [
+        id,
+        name,
+        name.toLowerCase().replaceAll(" ", "-"),
+        i,
+        t,
+      ]);
+      for (const s of slugs) {
+        await run(`insert into catalog_item_categories (item_id, category_id) values (?,?)`, [
+          id,
+          catIds[s],
+        ]);
+      }
+    }
+
     type P = {
       seller: string;
       cat: string;

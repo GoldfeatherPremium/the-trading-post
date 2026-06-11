@@ -16,6 +16,7 @@ const NAV = [
   { to: "/admin/finance", label: "Finance" },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/moderation", label: "Chat mod" },
+  { to: "/admin/items", label: "Selling items" },
   { to: "/admin/categories", label: "Categories" },
   { to: "/admin/coupons", label: "Coupons" },
   { to: "/admin/settings", label: "Settings" },

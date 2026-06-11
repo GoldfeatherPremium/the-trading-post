@@ -74,6 +74,7 @@ export const getMyApplication = createServerFn({ method: "GET" }).handler(async 
 // ---------------------------------------------------------------------------
 const productInput = z.object({
   categoryId: z.string(),
+  itemId: z.string().optional(),
   title: z.string().min(8).max(120),
   description: z.string().min(30).max(5000),
   imageKey: z.string().max(40).optional(),
@@ -105,6 +106,20 @@ export const saveProduct = createServerFn({ method: "POST" })
       data.categoryId,
     ]);
     if (!cat) fail("Invalid category.");
+    let itemId: string | null = null;
+    if (data.itemId) {
+      const item = await q1(`select id from catalog_items where id = ? and is_active = 1`, [
+        data.itemId,
+      ]);
+      if (!item) fail("Invalid selling item.");
+      const allowed = await q<{ category_id: string }>(
+        `select category_id from catalog_item_categories where item_id = ?`,
+        [data.itemId],
+      );
+      if (allowed.length > 0 && !allowed.some((a) => a.category_id === data.categoryId))
+        fail("That sub-category is not enabled for this selling item.");
+      itemId = data.itemId;
+    }
 
     if (data.productId) {
       const p = await q1<{ seller_id: string; delivery_type: string }>(
@@ -114,12 +129,13 @@ export const saveProduct = createServerFn({ method: "POST" })
       if (!p || p.seller_id !== user.id) fail("Product not found.");
       // edits go back through review
       await run(
-        `update products set category_id = ?, title = ?, description = ?, image_key = ?, delivery_sla_minutes = ?,
+        `update products set category_id = ?, item_id = ?, title = ?, description = ?, image_key = ?, delivery_sla_minutes = ?,
            warranty_hours = ?, price_cents = ?, min_qty = ?, max_qty = ?, region = ?, platform = ?, required_info = ?,
            status = 'pending_review', reject_reason = null
          where id = ?`,
         [
           data.categoryId,
+          itemId,
           data.title,
           data.description,
           data.imageKey ?? null,
@@ -148,14 +164,15 @@ export const saveProduct = createServerFn({ method: "POST" })
 
     const id = uid();
     await run(
-      `insert into products (id, seller_id, category_id, title, slug, description, image_key, delivery_type,
+      `insert into products (id, seller_id, category_id, item_id, title, slug, description, image_key, delivery_type,
          delivery_sla_minutes, warranty_hours, price_cents, min_qty, max_qty, region, platform, required_info,
          status, created_at)
-       values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending_review', ?)`,
+       values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending_review', ?)`,
       [
         id,
         user.id,
         data.categoryId,
+        itemId,
         data.title,
         slugify(data.title),
         data.description,
@@ -538,5 +555,28 @@ export const replyToReview = createServerFn({ method: "POST" })
     ]);
     if (!r || r.seller_id !== user.id) fail("Review not found.");
     await run(`update reviews set seller_reply = ? where id = ?`, [data.reply, data.reviewId]);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// "Can't find it?" — sellers suggest new catalog items for admins to add
+// ---------------------------------------------------------------------------
+export const suggestItem = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({ name: z.string().min(2).max(80), note: z.string().max(500).optional() }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireUser();
+    const recent = (await q1<{ c: number }>(
+      `select count(*) c from item_suggestions where user_id = ? and created_at > ?`,
+      [user.id, now() - 86_400_000],
+    ))!.c;
+    if (recent >= 5) fail("You can submit up to 5 suggestions per day.");
+    await run(
+      `insert into item_suggestions (id, user_id, name, note, created_at) values (?,?,?,?,?)`,
+      [uid(), user.id, data.name.trim(), data.note ?? null, now()],
+    );
+    await audit(user.id, "item_suggestion.create", "item_suggestion", data.name);
     return { ok: true };
   });

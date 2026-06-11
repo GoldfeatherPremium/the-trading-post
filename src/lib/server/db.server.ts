@@ -461,6 +461,34 @@ export function schemaSql(dialect: "sqlite" | "postgres"): string {
   create index if not exists idx_disputes_status on disputes(status);
   create index if not exists idx_withdrawals_status on withdrawals(status, created_at);
 
+  create table if not exists catalog_items (
+    id text primary key,
+    name text not null,
+    slug text unique not null,
+    is_active integer not null default 1,
+    sort integer not null default 0,
+    created_at ${big} not null
+  );
+
+  -- allowed sub-categories per item; no rows = all categories allowed
+  create table if not exists catalog_item_categories (
+    item_id text not null references catalog_items(id),
+    category_id text not null references categories(id),
+    primary key (item_id, category_id)
+  );
+
+  create table if not exists item_suggestions (
+    id text primary key,
+    user_id text not null references users(id),
+    name text not null,
+    note text,
+    status text not null default 'pending',
+    admin_note text,
+    reviewed_by text,
+    created_at ${big} not null,
+    reviewed_at ${big}
+  );
+
   create table if not exists coupons (
     id text primary key,
     code text unique not null,
@@ -492,6 +520,7 @@ async function migrate(e: Engine): Promise<void> {
     `alter table orders add column discount_cents ${big} not null default 0`,
     `alter table orders add column coupon_code text`,
     `alter table site_settings add column announcement text`,
+    `alter table products add column item_id text`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists

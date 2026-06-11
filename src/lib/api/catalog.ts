@@ -38,6 +38,8 @@ export interface PublicProduct {
   category_name: string;
   category_slug: string;
   risk_tier: string;
+  item_id: string | null;
+  item_name: string | null;
   seller: PublicSeller;
 }
 
@@ -49,10 +51,12 @@ const productSelect = `
          c.risk_tier,
          u.id as s_id, u.username as s_username, u.seller_level as s_level, u.rating as s_rating,
          u.rating_count as s_rating_count, u.total_sales as s_total_sales,
-         u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created
+         u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created,
+         p.item_id, ci.name as item_name
   from products p
   join categories c on c.id = p.category_id
-  join users u on u.id = p.seller_id`;
+  join users u on u.id = p.seller_id
+  left join catalog_items ci on ci.id = p.item_id`;
 
 function mapProduct(r: Record<string, unknown>): PublicProduct {
   const {
@@ -120,6 +124,7 @@ export const browseProducts = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
       category: z.string().optional(),
+      item: z.string().optional(),
       q: z.string().max(100).optional(),
       delivery: z.enum(["auto", "manual"]).optional(),
       minPrice: z.number().optional(),
@@ -136,6 +141,10 @@ export const browseProducts = createServerFn({ method: "GET" })
     if (data.category) {
       where.push(`c.slug = ?`);
       params.push(data.category);
+    }
+    if (data.item) {
+      where.push(`p.item_id = ?`);
+      params.push(data.item);
     }
     if (data.q) {
       const like = `%${data.q.toLowerCase()}%`;
@@ -241,3 +250,26 @@ export const getSellerStore = createServerFn({ method: "GET" })
     const products = productRows.map(mapProduct);
     return { seller, products, reviews };
   });
+
+export interface CatalogItem {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: number;
+  categoryIds: string[];
+}
+
+export const listCatalogItems = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  const [items, maps] = await Promise.all([
+    q<{ id: string; name: string; slug: string; is_active: number }>(
+      `select id, name, slug, is_active from catalog_items where is_active = 1 order by sort, name`,
+    ),
+    q<{ item_id: string; category_id: string }>(
+      `select item_id, category_id from catalog_item_categories`,
+    ),
+  ]);
+  const byItem: Record<string, string[]> = {};
+  for (const m of maps) (byItem[m.item_id] ??= []).push(m.category_id);
+  return { items: items.map((i) => ({ ...i, categoryIds: byItem[i.id] ?? [] })) };
+});

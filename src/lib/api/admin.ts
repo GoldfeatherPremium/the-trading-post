@@ -764,3 +764,125 @@ export const adminSaveCoupon = createServerFn({ method: "POST" })
     await audit(staff.id, "coupon.save", "coupon", data.couponId ?? data.code);
     return { ok: true };
   });
+
+// ---------------------------------------------------------------------------
+// Catalog items (games / brands / services) + seller suggestions
+// ---------------------------------------------------------------------------
+export const adminListItems = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  await requireStaff();
+  const [items, maps, suggestions] = await Promise.all([
+    q<{
+      id: string;
+      name: string;
+      slug: string;
+      is_active: number;
+      sort: number;
+      created_at: number;
+    }>(`select * from catalog_items order by sort, name`),
+    q<{ item_id: string; category_id: string }>(
+      `select item_id, category_id from catalog_item_categories`,
+    ),
+    q<Row>(
+      `select s.*, u.username from item_suggestions s join users u on u.id = s.user_id
+       order by case s.status when 'pending' then 0 else 1 end, s.created_at desc limit 100`,
+    ),
+  ]);
+  const byItem: Record<string, string[]> = {};
+  for (const m of maps) (byItem[m.item_id] ??= []).push(m.category_id);
+  return {
+    items: items.map((i) => ({ ...i, categoryIds: byItem[i.id] ?? [] })),
+    suggestions,
+  };
+});
+
+export const adminSaveItem = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      itemId: z.string().optional(),
+      name: z.string().min(2).max(80),
+      isActive: z.boolean().default(true),
+      categoryIds: z.array(z.string()).default([]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const slug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    let id = data.itemId;
+    if (id) {
+      await run(`update catalog_items set name = ?, is_active = ? where id = ?`, [
+        data.name,
+        data.isActive ? 1 : 0,
+        id,
+      ]);
+      await run(`delete from catalog_item_categories where item_id = ?`, [id]);
+    } else {
+      if (await q1(`select 1 as x from catalog_items where slug = ?`, [slug]))
+        fail("An item with that name already exists.");
+      id = uid();
+      await run(
+        `insert into catalog_items (id, name, slug, is_active, sort, created_at)
+         values (?,?,?,?, (select coalesce(max(sort),0)+1 from catalog_items), ?)`,
+        [id, data.name, slug, data.isActive ? 1 : 0, now()],
+      );
+    }
+    for (const catId of data.categoryIds) {
+      await run(
+        `insert into catalog_item_categories (item_id, category_id) values (?,?) on conflict (item_id, category_id) do nothing`,
+        [id!, catId],
+      );
+    }
+    await audit(staff.id, "catalog_item.save", "catalog_item", id);
+    return { itemId: id };
+  });
+
+export const reviewItemSuggestion = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      suggestionId: z.string(),
+      approve: z.boolean(),
+      note: z.string().max(500).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const s = await q1<{ id: string; user_id: string; name: string; status: string }>(
+      `select * from item_suggestions where id = ?`,
+      [data.suggestionId],
+    );
+    if (!s || s.status !== "pending") fail("Suggestion not found or already reviewed.");
+    const status = data.approve ? "approved" : "rejected";
+    await run(
+      `update item_suggestions set status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = ? where id = ?`,
+      [status, data.note ?? null, staff.id, now(), data.suggestionId],
+    );
+    if (data.approve) {
+      const slug = s!.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      if (!(await q1(`select 1 as x from catalog_items where slug = ?`, [slug]))) {
+        await run(
+          `insert into catalog_items (id, name, slug, sort, created_at)
+           values (?,?,?, (select coalesce(max(sort),0)+1 from catalog_items), ?)`,
+          [uid(), s!.name, slug, now()],
+        );
+      }
+    }
+    await notify(
+      s!.user_id,
+      "item_suggestion",
+      data.approve
+        ? `"${s!.name}" was added to the catalog 🎉`
+        : `Suggestion "${s!.name}" rejected`,
+      data.note ?? (data.approve ? "You can now list products under it." : ""),
+      "/seller/new-product",
+    );
+    await audit(staff.id, `item_suggestion.${status}`, "item_suggestion", data.suggestionId);
+    return { ok: true };
+  });
