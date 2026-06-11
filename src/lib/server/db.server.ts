@@ -143,7 +143,12 @@ async function getEngine(): Promise<Engine> {
 }
 
 export async function q<T = Record<string, unknown>>(sql: string, params?: Params): Promise<T[]> {
-  return (await getEngine()).q<T>(sql, params);
+  try {
+    return await (await getEngine()).q<T>(sql, params);
+  } catch (e) {
+    console.error("[db] query failed:", (e as Error)?.stack ?? e, "engine:", isPostgres() ? "postgres" : "sqlite");
+    throw e;
+  }
 }
 
 export async function q1<T = Record<string, unknown>>(
