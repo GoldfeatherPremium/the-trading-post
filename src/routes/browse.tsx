@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { getHomeData, browseProducts } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
@@ -26,6 +26,7 @@ function BrowsePage() {
   const navigate = useNavigate({ from: "/browse" });
   const { data: home } = useQuery({ queryKey: ["home"], queryFn: () => getHomeData() });
   const { data, isLoading } = useQuery({
+    placeholderData: keepPreviousData,
     queryKey: ["browse", search],
     queryFn: () =>
       browseProducts({

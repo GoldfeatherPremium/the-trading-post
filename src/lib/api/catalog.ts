@@ -85,39 +85,34 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
 
 export const getHomeData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
-  const categories = await q<{
-    id: string;
-    name: string;
-    slug: string;
-    icon: string;
-    default_warranty_hours: number;
-    commission_pct: number;
-    risk_tier: string;
-  }>(
-    `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
-  );
-  const trending = (
-    await q(
+  const [categories, trendingRows, newestRows, topSellers, recentSales] = await Promise.all([
+    q<{
+      id: string;
+      name: string;
+      slug: string;
+      icon: string;
+      default_warranty_hours: number;
+      commission_pct: number;
+      risk_tier: string;
+    }>(
+      `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
+    ),
+    q(
       `${productSelect} where p.status = 'active' order by p.sold_count desc, p.views desc limit 8`,
-    )
-  ).map(mapProduct);
-  const newest = (
-    await q(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`)
-  ).map(mapProduct);
-  const topSellers = await q<PublicSeller>(
-    `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
-     from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
-  );
-  const recentSales = await q<{
-    product_title: string;
-    total_cents: number;
-    created_at: number;
-    buyer: string;
-  }>(
-    `select o.product_title, o.total_cents, o.created_at, u.username as buyer
-     from orders o join users u on u.id = o.buyer_id
-     where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
-  );
+    ),
+    q(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`),
+    q<PublicSeller>(
+      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
+       from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
+    ),
+    q<{ product_title: string; total_cents: number; created_at: number; buyer: string }>(
+      `select o.product_title, o.total_cents, o.created_at, u.username as buyer
+       from orders o join users u on u.id = o.buyer_id
+       where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
+    ),
+  ]);
+  const trending = trendingRows.map(mapProduct);
+  const newest = newestRows.map(mapProduct);
   return { categories, trending, newest, topSellers, recentSales };
 });
 
@@ -173,16 +168,18 @@ export const browseProducts = createServerFn({ method: "GET" })
     }[data.sort];
     const PAGE = 24;
     const whereSql = where.join(" and ");
-    const total = (await q1<{ c: number }>(
-      `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
-      params,
-    ))!.c;
-    const items = (
-      await q(
+    const [totalRow, itemRows] = await Promise.all([
+      q1<{ c: number }>(
+        `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
+        params,
+      ),
+      q(
         `${productSelect} where ${whereSql} order by ${order} limit ${PAGE} offset ${(data.page - 1) * PAGE}`,
         params,
-      )
-    ).map(mapProduct);
+      ),
+    ]);
+    const total = totalRow!.c;
+    const items = itemRows.map(mapProduct);
     return { items, total, page: data.page, pageCount: Math.max(1, Math.ceil(total / PAGE)) };
   });
 
@@ -195,18 +192,20 @@ export const getProduct = createServerFn({ method: "GET" })
     const product = mapProduct(row);
     if (product.status !== "active" && product.status !== "out_of_stock")
       return { product: null, reviews: [] };
-    await run(`update products set views = views + 1 where id = ?`, [product.id]);
-    const reviews = await q<{
-      rating: number;
-      comment: string | null;
-      seller_reply: string | null;
-      created_at: number;
-      buyer: string;
-    }>(
-      `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer
+    const [, reviews] = await Promise.all([
+      run(`update products set views = views + 1 where id = ?`, [product.id]),
+      q<{
+        rating: number;
+        comment: string | null;
+        seller_reply: string | null;
+        created_at: number;
+        buyer: string;
+      }>(
+        `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer
        from reviews r join users u on u.id = r.buyer_id where r.product_id = ? order by r.created_at desc limit 30`,
-      [product.id],
-    );
+        [product.id],
+      ),
+    ]);
     return { product, reviews };
   });
 
@@ -220,24 +219,25 @@ export const getSellerStore = createServerFn({ method: "GET" })
       [data.username],
     );
     if (!seller) return { seller: null, products: [], reviews: [] };
-    const products = (
-      await q(
+    const [productRows, reviews] = await Promise.all([
+      q(
         `${productSelect} where p.seller_id = ? and p.status in ('active','out_of_stock') order by p.sold_count desc`,
         [seller.id],
-      )
-    ).map(mapProduct);
-    const reviews = await q<{
-      rating: number;
-      comment: string | null;
-      seller_reply: string | null;
-      created_at: number;
-      buyer: string;
-      product_title: string;
-    }>(
-      `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer, o.product_title
+      ),
+      q<{
+        rating: number;
+        comment: string | null;
+        seller_reply: string | null;
+        created_at: number;
+        buyer: string;
+        product_title: string;
+      }>(
+        `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer, o.product_title
        from reviews r join users u on u.id = r.buyer_id join orders o on o.id = r.order_id
        where r.seller_id = ? order by r.created_at desc limit 50`,
-      [seller.id],
-    );
+        [seller.id],
+      ),
+    ]);
+    const products = productRows.map(mapProduct);
     return { seller, products, reviews };
   });

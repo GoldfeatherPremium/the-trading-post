@@ -332,32 +332,38 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
   await appContext();
   const user = await requireSeller();
   const t = now();
-  const sales = async (period: number) =>
-    (await q1<{ c: number; s: number }>(
+  const dayMs = 86_400_000;
+  const sales = (period: number) =>
+    q1<{ c: number; s: number }>(
       `select count(*) c, coalesce(sum(seller_net_cents),0) s from orders
        where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
       [user.id, t - period],
-    ))!;
-  const wallet = await getWallet(user.id);
-  const needsDelivery = (await q1<{ c: number }>(
-    `select count(*) c from orders where seller_id = ? and status in ('paid','delivering')`,
-    [user.id],
-  ))!.c;
-  const openDisputes = (await q1<{ c: number }>(
-    `select count(*) c from disputes dd join orders o on o.id = dd.order_id where o.seller_id = ? and dd.status != 'resolved'`,
-    [user.id],
-  ))!.c;
-  const lowStock = await q<{ id: string; title: string; stock_count: number }>(
-    `select id, title, stock_count from products where seller_id = ? and delivery_type = 'auto'
-     and status in ('active','out_of_stock') and stock_count <= 5 order by stock_count`,
-    [user.id],
-  );
-  const dayMs = 86_400_000;
-  const paidOrders = await q<{ paid_at: number; seller_net_cents: number }>(
-    `select paid_at, seller_net_cents from orders
-     where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
-    [user.id, t - 13 * dayMs],
-  );
+    );
+  const [today, week, month, wallet, needsDelivery, openDisputes, lowStock, paidOrders] =
+    await Promise.all([
+      sales(dayMs),
+      sales(7 * dayMs),
+      sales(30 * dayMs),
+      getWallet(user.id),
+      q1<{ c: number }>(
+        `select count(*) c from orders where seller_id = ? and status in ('paid','delivering')`,
+        [user.id],
+      ),
+      q1<{ c: number }>(
+        `select count(*) c from disputes dd join orders o on o.id = dd.order_id where o.seller_id = ? and dd.status != 'resolved'`,
+        [user.id],
+      ),
+      q<{ id: string; title: string; stock_count: number }>(
+        `select id, title, stock_count from products where seller_id = ? and delivery_type = 'auto'
+       and status in ('active','out_of_stock') and stock_count <= 5 order by stock_count`,
+        [user.id],
+      ),
+      q<{ paid_at: number; seller_net_cents: number }>(
+        `select paid_at, seller_net_cents from orders
+       where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
+        [user.id, t - 13 * dayMs],
+      ),
+    ]);
   const daily: Array<{ day: string; sales: number; orders: number }> = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(t - i * dayMs);
@@ -370,12 +376,12 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
   }
   return {
     daily,
-    today: await sales(86_400_000),
-    week: await sales(7 * 86_400_000),
-    month: await sales(30 * 86_400_000),
+    today: today!,
+    week: week!,
+    month: month!,
     wallet,
-    needsDelivery,
-    openDisputes,
+    needsDelivery: needsDelivery!.c,
+    openDisputes: openDisputes!.c,
     lowStock,
     profile: {
       level: user.seller_level,
@@ -390,31 +396,33 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
 export const getWalletData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
   const user = await requireUser();
-  const wallet = await getWallet(user.id);
-  const ledger = await q<{
-    id: number;
-    order_id: string | null;
-    type: string;
-    amount_cents: number;
-    balance_after_cents: number;
-    note: string | null;
-    created_at: number;
-  }>(`select * from wallet_ledger where user_id = ? order by id desc limit 200`, [user.id]);
-  const withdrawals = await q<{
-    id: string;
-    amount_cents: number;
-    fee_cents: number;
-    address: string;
-    network: string;
-    status: string;
-    tx_hash: string | null;
-    created_at: number;
-  }>(`select * from withdrawals where user_id = ? order by created_at desc limit 50`, [user.id]);
-  const settings = await getSettings();
-  const app = await q1<{ usdt_payout_address: string; usdt_network: string }>(
-    `select usdt_payout_address, usdt_network from seller_applications where user_id = ? and status = 'approved' order by created_at desc limit 1`,
-    [user.id],
-  );
+  const [wallet, ledger, withdrawals, settings, app] = await Promise.all([
+    getWallet(user.id),
+    q<{
+      id: number;
+      order_id: string | null;
+      type: string;
+      amount_cents: number;
+      balance_after_cents: number;
+      note: string | null;
+      created_at: number;
+    }>(`select * from wallet_ledger where user_id = ? order by id desc limit 200`, [user.id]),
+    q<{
+      id: string;
+      amount_cents: number;
+      fee_cents: number;
+      address: string;
+      network: string;
+      status: string;
+      tx_hash: string | null;
+      created_at: number;
+    }>(`select * from withdrawals where user_id = ? order by created_at desc limit 50`, [user.id]),
+    getSettings(),
+    q1<{ usdt_payout_address: string; usdt_network: string }>(
+      `select usdt_payout_address, usdt_network from seller_applications where user_id = ? and status = 'approved' order by created_at desc limit 1`,
+      [user.id],
+    ),
+  ]);
   return {
     wallet,
     ledger,

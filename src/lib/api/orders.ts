@@ -23,7 +23,6 @@ import {
   getOrderRow,
   markManualDelivered,
   refundOrder,
-  sweepLifecycle,
   type OrderRow,
 } from "../server/lifecycle.server";
 
@@ -227,7 +226,6 @@ export const listMyOrders = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const user = data.role === "seller" ? await requireSeller() : await requireUser();
-    await sweepLifecycle();
     const col = data.role === "seller" ? "seller_id" : "buyer_id";
     const orders = await q<OrderRow & { counterparty: string }>(
       `select o.*, u.username as counterparty from orders o
@@ -243,62 +241,60 @@ export const getOrder = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const user = await requireUser();
-    await sweepLifecycle();
     const o = await getOrderRow(data.orderId);
     if (!o || (o.buyer_id !== user.id && o.seller_id !== user.id && !isStaff(user)))
       fail("Order not found.");
     const isBuyer = o!.buyer_id === user.id;
-    const deliveries = await q<{
-      id: string;
-      type: string;
-      payload: string | null;
-      note: string | null;
-      created_at: number;
-    }>(
-      `select id, type, payload, note, created_at from order_deliveries where order_id = ? order by created_at`,
-      [data.orderId],
-    );
+    const [deliveries, dispute, review, buyer, seller, conversationId, settings] =
+      await Promise.all([
+        q<{
+          id: string;
+          type: string;
+          payload: string | null;
+          note: string | null;
+          created_at: number;
+        }>(
+          `select id, type, payload, note, created_at from order_deliveries where order_id = ? order by created_at`,
+          [data.orderId],
+        ),
+        q1<{
+          id: string;
+          reason: string;
+          description: string | null;
+          seller_response: string | null;
+          status: string;
+          resolution: string | null;
+          resolution_cents: number | null;
+          created_at: number;
+          resolved_at: number | null;
+          opened_by: string;
+        }>(`select * from disputes where order_id = ?`, [data.orderId]),
+        q1<{
+          rating: number;
+          comment: string | null;
+          seller_reply: string | null;
+          created_at: number;
+        }>(`select rating, comment, seller_reply, created_at from reviews where order_id = ?`, [
+          data.orderId,
+        ]),
+        q1<{ username: string }>(`select username from users where id = ?`, [o!.buyer_id]),
+        q1<{ username: string }>(`select username from users where id = ?`, [o!.seller_id]),
+        getOrCreateOrderConversation(data.orderId),
+        getSettings(),
+      ]);
     // codes are only revealed to the buyer (and staff for disputes)
     const safeDeliveries = deliveries.map((del) => ({
       ...del,
       payload:
         isBuyer || isStaff(user) ? del.payload : del.payload ? "•••• (visible to buyer)" : null,
     }));
-    const dispute = await q1<{
-      id: string;
-      reason: string;
-      description: string | null;
-      seller_response: string | null;
-      status: string;
-      resolution: string | null;
-      resolution_cents: number | null;
-      created_at: number;
-      resolved_at: number | null;
-      opened_by: string;
-    }>(`select * from disputes where order_id = ?`, [data.orderId]);
-    const review = await q1<{
-      rating: number;
-      comment: string | null;
-      seller_reply: string | null;
-      created_at: number;
-    }>(`select rating, comment, seller_reply, created_at from reviews where order_id = ?`, [
-      data.orderId,
-    ]);
-    const buyer = (await q1<{ username: string }>(`select username from users where id = ?`, [
-      o!.buyer_id,
-    ]))!;
-    const seller = (await q1<{ username: string }>(`select username from users where id = ?`, [
-      o!.seller_id,
-    ]))!;
-    const conversationId = await getOrCreateOrderConversation(data.orderId);
-    const settings = await getSettings();
     return {
       order: o!,
       deliveries: safeDeliveries,
       dispute: dispute ?? null,
       review: review ?? null,
-      buyerName: buyer.username,
-      sellerName: seller.username,
+      buyerName: buyer!.username,
+      sellerName: seller!.username,
       conversationId,
       viewerIsBuyer: isBuyer,
       viewerIsSeller: o!.seller_id === user.id,

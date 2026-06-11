@@ -454,6 +454,13 @@ export function schemaSql(dialect: "sqlite" | "postgres"): string {
     primary key (user_id, product_id)
   );
 
+  create index if not exists idx_products_status on products(status, sold_count);
+  create index if not exists idx_products_seller on products(seller_id, status);
+  create index if not exists idx_deposits_order on deposits(order_id);
+  create index if not exists idx_conv_order on conversations(order_id);
+  create index if not exists idx_disputes_status on disputes(status);
+  create index if not exists idx_withdrawals_status on withdrawals(status, created_at);
+
   create table if not exists coupons (
     id text primary key,
     code text unique not null,

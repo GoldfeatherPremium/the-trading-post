@@ -27,48 +27,53 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
   await appContext();
   await requireStaff();
   const t = now();
-  const gmv = async (since: number) =>
-    (await q1<{ s: number; c: number }>(
+  const dayMs = 86_400_000;
+  const gmv = (since: number) =>
+    q1<{ s: number; c: number }>(
       `select coalesce(sum(total_cents),0) s, count(*) c from orders where paid_at > ? and status not in ('cancelled','expired')`,
       [since],
-    ))!;
-  const revenue = (await q1<{ s: number }>(
-    `select coalesce(sum(commission_cents),0) s from orders where status = 'released'`,
-  ))!.s;
-  const ordersByStatus = await q<{ status: string; c: number }>(
-    `select status, count(*) c from orders group by status`,
-  );
-  const pending = {
-    sellerApplications: await count(
-      `select count(*) c from seller_applications where status = 'pending'`,
+    );
+  const [
+    gmvToday,
+    gmv30d,
+    revenueRow,
+    ordersByStatus,
+    sellerApplications,
+    productReviews,
+    openDisputes,
+    withdrawals,
+    flaggedMessages,
+    escrowRow,
+    users,
+    topSellers,
+    paidOrders,
+  ] = await Promise.all([
+    gmv(t - dayMs),
+    gmv(t - 30 * dayMs),
+    q1<{ s: number }>(
+      `select coalesce(sum(commission_cents),0) s from orders where status = 'released'`,
     ),
-    productReviews: await count(`select count(*) c from products where status = 'pending_review'`),
-    openDisputes: await count(`select count(*) c from disputes where status != 'resolved'`),
-    withdrawals: await count(`select count(*) c from withdrawals where status = 'pending'`),
-    flaggedMessages: await count(
-      `select count(*) c from messages where is_flagged = 1 and moderated_at is null`,
+    q<{ status: string; c: number }>(`select status, count(*) c from orders group by status`),
+    count(`select count(*) c from seller_applications where status = 'pending'`),
+    count(`select count(*) c from products where status = 'pending_review'`),
+    count(`select count(*) c from disputes where status != 'resolved'`),
+    count(`select count(*) c from withdrawals where status = 'pending'`),
+    count(`select count(*) c from messages where is_flagged = 1 and moderated_at is null`),
+    q1<{ s: number }>(`select coalesce(sum(pending_cents),0) s from wallets`),
+    count(`select count(*) c from users`),
+    q<{ username: string; c: number; s: number }>(
+      `select u.username, count(*) c, coalesce(sum(o.total_cents),0) s from orders o join users u on u.id = o.seller_id
+       where o.paid_at > ? group by o.seller_id, u.username order by s desc limit 5`,
+      [t - 30 * dayMs],
     ),
-  };
-  const escrowHeld = (await q1<{ s: number }>(
-    `select coalesce(sum(pending_cents),0) s from wallets`,
-  ))!.s;
-  const users = await count(`select count(*) c from users`);
-  const topSellers = await q<{ username: string; c: number; s: number }>(
-    `select u.username, count(*) c, coalesce(sum(o.total_cents),0) s from orders o join users u on u.id = o.seller_id
-     where o.paid_at > ? group by o.seller_id, u.username order by s desc limit 5`,
-    [t - 30 * 86_400_000],
-  );
-  // last 14 days of paid GMV for the dashboard chart
-  const dayMs = 86_400_000;
-  const since = t - 13 * dayMs;
-  const paidOrders = await q<{ paid_at: number; total_cents: number }>(
-    `select paid_at, total_cents from orders where paid_at > ? and status not in ('cancelled','expired')`,
-    [since],
-  );
+    q<{ paid_at: number; total_cents: number }>(
+      `select paid_at, total_cents from orders where paid_at > ? and status not in ('cancelled','expired')`,
+      [t - 13 * dayMs],
+    ),
+  ]);
   const daily: Array<{ day: string; gmv: number; orders: number }> = [];
   for (let i = 13; i >= 0; i--) {
-    const dayStart = t - i * dayMs;
-    const d = new Date(dayStart);
+    const d = new Date(t - i * dayMs);
     daily.push({ day: `${d.getMonth() + 1}/${d.getDate()}`, gmv: 0, orders: 0 });
   }
   for (const o of paidOrders) {
@@ -78,12 +83,12 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
   }
   return {
     daily,
-    gmvToday: await gmv(t - 86_400_000),
-    gmv30d: await gmv(t - 30 * 86_400_000),
-    revenue,
+    gmvToday: gmvToday!,
+    gmv30d: gmv30d!,
+    revenue: revenueRow!.s,
     ordersByStatus,
-    pending,
-    escrowHeld,
+    pending: { sellerApplications, productReviews, openDisputes, withdrawals, flaggedMessages },
+    escrowHeld: escrowRow!.s,
     users,
     topSellers,
   };

@@ -271,3 +271,34 @@ create table if not exists site_settings (
   maintenance_mode integer not null default 0
 );
 insert into site_settings (id) values (1) on conflict (id) do nothing;
+
+create table if not exists favorites (
+  user_id text not null references users(id),
+  product_id text not null references products(id),
+  created_at bigint not null,
+  primary key (user_id, product_id)
+);
+
+create index if not exists idx_products_status on products(status, sold_count);
+create index if not exists idx_products_seller on products(seller_id, status);
+create index if not exists idx_deposits_order on deposits(order_id);
+create index if not exists idx_conv_order on conversations(order_id);
+create index if not exists idx_disputes_status on disputes(status);
+create index if not exists idx_withdrawals_status on withdrawals(status, created_at);
+
+create table if not exists coupons (
+  id text primary key,
+  code text unique not null,
+  pct_off double precision not null,
+  min_total_cents bigint not null default 0,
+  max_uses integer not null default 0,
+  used_count integer not null default 0,
+  expires_at bigint,
+  is_active integer not null default 1,
+  created_at bigint not null
+);
+
+-- additive columns applied by the app on boot
+alter table orders add column if not exists discount_cents bigint not null default 0;
+alter table orders add column if not exists coupon_code text;
+alter table site_settings add column if not exists announcement text;
