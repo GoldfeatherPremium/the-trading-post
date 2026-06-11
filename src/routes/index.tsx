@@ -1,14 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ShieldCheck, Zap, Headphones, Star, TrendingUp, Sparkles } from "lucide-react";
+import {
+  ShieldCheck,
+  Zap,
+  Headphones,
+  Star,
+  TrendingUp,
+  Sparkles,
+  ArrowUpRight,
+  History,
+} from "lucide-react";
 import { getHomeData } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { usdtShort, timeAgo } from "@/lib/format";
 import { productImage } from "@/lib/images";
 import { SmartSearch } from "@/components/smart-search";
-import { History } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,69 +45,156 @@ function Index() {
     }
   }, []);
 
+  const featured = data?.trending[0];
+  const totalSales = data?.topSellers.reduce((a, s) => a + s.total_sales, 0) ?? 0;
+
   return (
     <PageShell>
-      {/* Hero */}
-      <header className="py-8 space-y-4 text-center max-w-2xl mx-auto">
-        <h1 className="font-display text-5xl sm:text-6xl leading-none text-balance animate-enter">
-          Level Up Your <span className="text-primary">Armory</span>
-        </h1>
-        <p
-          className="text-sm text-muted-foreground animate-enter"
-          style={{ animationDelay: "60ms" }}
-        >
-          Game currency, gift cards, keys, accounts & boosting. Every order escrow-protected, paid
-          in USDT, released to sellers only after your warranty clears.
-        </p>
-        <div className="animate-enter pt-2 relative z-50" style={{ animationDelay: "80ms" }}>
-          <SmartSearch variant="hero" />
-        </div>
+      {/* ============ HERO BENTO ============ */}
+      <section className="relative">
+        {/* aurora glow background */}
         <div
-          className="flex justify-center gap-2 animate-enter"
-          style={{ animationDelay: "100ms" }}
-        >
-          <Link
-            to="/browse"
-            className="bg-primary text-primary-foreground text-xs font-bold tracking-widest px-5 py-3 rounded-md"
-          >
-            BROWSE MARKET
-          </Link>
-          <Link
-            to="/sell"
-            className="bg-secondary text-foreground text-xs font-bold tracking-widest px-5 py-3 rounded-md hover:bg-border"
-          >
-            START SELLING
-          </Link>
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 opacity-70 blur-3xl"
+          style={{ background: "var(--gradient-aurora)" }}
+        />
+
+        <div className="grid grid-cols-6 auto-rows-[minmax(110px,auto)] gap-3 sm:gap-4 pt-2">
+          {/* Big hero tile */}
+          <div className="col-span-6 lg:col-span-4 row-span-2 relative overflow-hidden rounded-2xl border border-border bg-card p-6 sm:p-8">
+            <div
+              aria-hidden
+              className="absolute -top-20 -right-20 size-72 rounded-full opacity-40 blur-3xl"
+              style={{ background: "var(--gradient-primary)" }}
+            />
+            <div className="relative space-y-5 max-w-xl">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-primary bg-primary/10 border border-primary/30 rounded-full px-2.5 py-1">
+                <ShieldCheck className="size-3" /> ESCROW-PROTECTED · USDT
+              </span>
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl leading-[0.95] text-balance">
+                Level up your
+                <br />
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "var(--gradient-primary)" }}
+                >
+                  digital armory
+                </span>
+              </h1>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Game currency, gift cards, keys, accounts & boosting — released to sellers only
+                after your warranty clears.
+              </p>
+              <div className="pt-1 relative z-50">
+                <SmartSearch variant="hero" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to="/browse"
+                  className="group inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-bold tracking-widest px-4 py-2.5 rounded-lg hover:opacity-90"
+                >
+                  BROWSE MARKET
+                  <ArrowUpRight className="size-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to="/sell"
+                  className="inline-flex items-center gap-1.5 bg-secondary text-foreground text-xs font-bold tracking-widest px-4 py-2.5 rounded-lg hover:bg-border"
+                >
+                  START SELLING
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats stack */}
+          <StatTile
+            label="Active Listings"
+            value={(data?.trending.length ?? 0) + (data?.newest.length ?? 0) + "+"}
+            icon={<Sparkles className="size-4" />}
+            className="col-span-3 lg:col-span-2"
+          />
+          <StatTile
+            label="Trusted Sellers"
+            value={(data?.topSellers.length ?? 0).toString()}
+            icon={<Star className="size-4" />}
+            className="col-span-3 lg:col-span-2"
+            accent
+          />
+
+          {/* Featured product card */}
+          {featured && (
+            <Link
+              to="/p/$slug"
+              params={{ slug: featured.slug }}
+              className="col-span-6 lg:col-span-2 row-span-2 relative overflow-hidden rounded-2xl border border-border bg-card group"
+            >
+              <img
+                src={productImage(featured.image_key)}
+                alt={featured.title}
+                className="absolute inset-0 size-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
+              <div className="relative h-full flex flex-col justify-end p-5 min-h-[260px]">
+                <span className="inline-flex items-center gap-1 self-start text-[9px] font-bold tracking-widest text-accent bg-accent/15 border border-accent/30 rounded-full px-2 py-0.5 mb-2">
+                  <TrendingUp className="size-2.5" /> #1 TRENDING
+                </span>
+                <h3 className="font-display text-lg leading-tight line-clamp-2">
+                  {featured.title}
+                </h3>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[10px] text-muted-foreground">
+                    {featured.seller.username}
+                  </span>
+                  <span className="font-mono text-accent text-sm">
+                    {usdtShort(featured.price_cents)}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
-      </header>
+      </section>
 
-      {/* Categories */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-        {data?.categories.map((c) => (
-          <Link
-            key={c.id}
-            to="/browse"
-            search={{ category: c.slug }}
-            className="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold tracking-wide bg-secondary hover:bg-border flex items-center gap-1.5"
-          >
-            <span>{c.icon}</span> {c.name}
-          </Link>
-        ))}
-      </div>
+      {/* ============ CATEGORY BENTO ============ */}
+      <section className="pt-8">
+        <SectionHeader label="EXPLORE" title="Categories" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {data?.categories.map((c, i) => (
+            <Link
+              key={c.id}
+              to="/browse"
+              search={{ category: c.slug }}
+              className="group relative overflow-hidden rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors min-h-[110px] flex flex-col justify-between"
+              style={{ animationDelay: `${i * 30}ms` }}
+            >
+              <div
+                aria-hidden
+                className="absolute -bottom-8 -right-8 size-24 rounded-full opacity-0 group-hover:opacity-30 blur-2xl transition-opacity"
+                style={{ background: "var(--gradient-primary)" }}
+              />
+              <span className="text-3xl">{c.icon}</span>
+              <div>
+                <p className="text-sm font-bold leading-tight">{c.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                  Browse <ArrowUpRight className="size-2.5" />
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-      {/* Recently viewed */}
+      {/* ============ RECENTLY VIEWED ============ */}
       {recent.length > 0 && (
-        <section className="pt-6">
-          <h2 className="font-display text-xl tracking-wide flex items-center gap-2 mb-3 text-muted-foreground">
-            <History className="size-4" /> RECENTLY VIEWED
-          </h2>
+        <section className="pt-8">
+          <SectionHeader label="JUST FOR YOU" title="Recently viewed" icon={<History />} />
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {recent.map((r) => (
               <Link
                 key={r.slug}
                 to="/p/$slug"
                 params={{ slug: r.slug }}
-                className="shrink-0 w-40 bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50"
+                className="shrink-0 w-44 bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50"
               >
                 <div className="aspect-[16/10] bg-secondary overflow-hidden">
                   <img
@@ -108,9 +203,11 @@ function Index() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="p-2">
-                  <p className="text-[10px] font-bold line-clamp-1">{r.title}</p>
-                  <p className="text-[10px] font-mono text-accent">{usdtShort(r.price_cents)}</p>
+                <div className="p-2.5">
+                  <p className="text-[11px] font-bold line-clamp-1">{r.title}</p>
+                  <p className="text-[11px] font-mono text-accent mt-0.5">
+                    {usdtShort(r.price_cents)}
+                  </p>
                 </div>
               </Link>
             ))}
@@ -118,126 +215,252 @@ function Index() {
         </section>
       )}
 
-      {/* Trending */}
-      <section className="py-8">
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="font-display text-2xl tracking-wide flex items-center gap-2">
-            <TrendingUp className="size-5 text-primary" /> TRENDING OFFERS
-          </h2>
-          <Link to="/browse" className="text-[10px] text-primary font-bold tracking-widest">
-            VIEW ALL
-          </Link>
-        </div>
+      {/* ============ TRENDING BENTO ============ */}
+      <section className="pt-10">
+        <SectionHeader
+          label="HOT RIGHT NOW"
+          title="Trending offers"
+          icon={<TrendingUp />}
+          link={{ to: "/browse", label: "View all" }}
+        />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {data?.trending.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+          {data?.trending.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       </section>
 
-      {/* New listings */}
-      <section className="py-4">
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="font-display text-2xl tracking-wide flex items-center gap-2">
-            <Sparkles className="size-5 text-accent" /> FRESH LISTINGS
-          </h2>
-          <Link
-            to="/browse"
-            search={{ sort: "newest" }}
-            className="text-[10px] text-primary font-bold tracking-widest"
-          >
-            SEE MORE
-          </Link>
-        </div>
+      {/* ============ FRESH LISTINGS ============ */}
+      <section className="pt-10">
+        <SectionHeader
+          label="JUST DROPPED"
+          title="Fresh listings"
+          icon={<Sparkles />}
+          link={{ to: "/browse", search: { sort: "newest" as const }, label: "See more" }}
+        />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {data?.newest.slice(0, 4).map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+          {data?.newest.slice(0, 4).map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       </section>
 
-      {/* Top sellers + recent sales */}
-      <section className="grid md:grid-cols-2 gap-6 py-8">
-        <div className="bg-card border border-border rounded-lg p-4">
-          <h3 className="font-display text-xl mb-3">TOP SELLERS</h3>
-          <div className="space-y-2">
+      {/* ============ TOP SELLERS + LIVE FEED BENTO ============ */}
+      <section className="pt-10 grid lg:grid-cols-5 gap-4">
+        {/* Top sellers */}
+        <div className="lg:col-span-3 bg-card border border-border rounded-2xl p-5">
+          <SectionHeader label="LEADERBOARD" title="Top sellers" inline />
+          <div className="space-y-1.5 mt-3">
             {data?.topSellers.map((s, i) => (
               <Link
                 key={s.id}
                 to="/s/$username"
                 params={{ username: s.username }}
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-secondary/60 transition-colors"
               >
-                <span className="font-display text-lg text-muted-foreground w-5">#{i + 1}</span>
-                <div className="size-8 rounded-full bg-primary/20 border border-primary/40 grid place-items-center text-[10px] font-bold text-primary uppercase">
+                <span
+                  className={`font-display text-xl w-7 text-center ${
+                    i === 0
+                      ? "text-primary"
+                      : i === 1
+                        ? "text-foreground/80"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <div className="size-10 rounded-xl bg-primary/15 border border-primary/40 grid place-items-center text-xs font-bold text-primary uppercase">
                   {s.username.slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold truncate">{s.username}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Lv.{s.seller_level} · {s.total_sales.toLocaleString()} sales
+                  <p className="text-sm font-bold truncate">{s.username}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Lvl {s.seller_level} · {s.total_sales.toLocaleString()} sales
                   </p>
                 </div>
-                <span className="text-[10px] text-yellow-400 flex items-center gap-0.5">
-                  <Star className="size-3 fill-current" />{" "}
+                <span className="text-[11px] text-yellow-400 flex items-center gap-0.5 font-bold">
+                  <Star className="size-3 fill-current" />
                   {s.rating > 0 ? s.rating.toFixed(1) : "—"}
                 </span>
               </Link>
             ))}
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <h3 className="font-display text-xl mb-3">RECENT SALES</h3>
-          <div className="space-y-2">
+
+        {/* Live feed */}
+        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5 relative overflow-hidden">
+          <div
+            aria-hidden
+            className="absolute -top-10 -right-10 size-40 rounded-full opacity-30 blur-3xl"
+            style={{ background: "var(--gradient-primary)" }}
+          />
+          <SectionHeader label="LIVE" title="Recent sales" inline pulse />
+          <div className="space-y-2.5 mt-3 relative">
             {data?.recentSales.length === 0 && (
               <p className="text-xs text-muted-foreground">No sales yet — be the first!</p>
             )}
-            {data?.recentSales.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 text-xs">
-                <span className="size-1.5 rounded-full bg-accent animate-pulse" />
-                <span className="truncate flex-1">
-                  <b>{s.buyer}</b> bought {s.product_title}
-                </span>
-                <span className="text-accent font-mono whitespace-nowrap">
-                  {usdtShort(s.total_cents)}
-                </span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {timeAgo(s.created_at)}
-                </span>
+            {data?.recentSales.slice(0, 6).map((s, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs">
+                <span className="size-1.5 rounded-full bg-accent animate-pulse mt-1.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="leading-tight truncate">
+                    <b className="text-foreground">{s.buyer}</b>{" "}
+                    <span className="text-muted-foreground">bought</span> {s.product_title}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {timeAgo(s.created_at)} · <span className="text-accent font-mono">
+                      {usdtShort(s.total_cents)}
+                    </span>
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Trust */}
-      <section className="grid grid-cols-3 gap-3 py-8 text-center">
-        {[
-          {
-            icon: ShieldCheck,
-            t: "Escrow Protection",
-            d: "Funds release to sellers only after your warranty clears",
-          },
-          {
-            icon: Zap,
-            t: "Instant Delivery",
-            d: "Auto-delivered codes the second payment confirms",
-          },
-          {
-            icon: Headphones,
-            t: "Dispute Team",
-            d: "Open a dispute any time during warranty — we mediate",
-          },
-        ].map((x) => (
-          <div key={x.t} className="space-y-2 bg-card border border-border rounded-lg p-4">
-            <x.icon className="size-6 text-primary mx-auto" />
-            <p className="text-xs font-bold uppercase">{x.t}</p>
-            <p className="text-[10px] text-muted-foreground leading-relaxed hidden sm:block">
-              {x.d}
+      {/* ============ TRUST BENTO ============ */}
+      <section className="pt-10">
+        <SectionHeader label="WHY X-VAULT" title="Built for trust" />
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            {
+              icon: ShieldCheck,
+              t: "Escrow Protection",
+              d: "Funds release to sellers only after your warranty clears.",
+              tag: "100% PROTECTED",
+            },
+            {
+              icon: Zap,
+              t: "Instant Delivery",
+              d: "Auto-delivered codes the second your payment confirms.",
+              tag: "⚡ < 60s",
+            },
+            {
+              icon: Headphones,
+              t: "Dispute Team",
+              d: "Open a dispute anytime during warranty — we mediate.",
+              tag: "24 / 7",
+            },
+          ].map((x) => (
+            <div
+              key={x.t}
+              className="relative overflow-hidden bg-card border border-border rounded-2xl p-5 hover:border-primary/40 transition-colors group"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div
+                  className="size-10 rounded-xl grid place-items-center text-primary-foreground"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
+                  <x.icon className="size-5" />
+                </div>
+                <span className="text-[9px] font-bold tracking-widest text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+                  {x.tag}
+                </span>
+              </div>
+              <p className="font-bold text-sm">{x.t}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{x.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ CTA STRIP ============ */}
+      <section className="pt-10 pb-2">
+        <div
+          className="relative overflow-hidden rounded-2xl border border-border p-8 sm:p-10 text-center"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-30"
+            style={{ background: "radial-gradient(circle at 30% 50%, white, transparent 60%)" }}
+          />
+          <div className="relative space-y-3">
+            <h2 className="font-display text-3xl sm:text-4xl text-primary-foreground">
+              Ready to sell?
+            </h2>
+            <p className="text-sm text-primary-foreground/85 max-w-md mx-auto">
+              List your digital goods, get paid in USDT, ship from anywhere.
             </p>
+            <div className="flex justify-center gap-2 pt-1">
+              <Link
+                to="/sell"
+                className="bg-background text-foreground text-xs font-bold tracking-widest px-5 py-3 rounded-lg hover:bg-card"
+              >
+                BECOME A SELLER
+              </Link>
+            </div>
           </div>
-        ))}
+        </div>
+        <p className="sr-only">{totalSales} total sales across the platform.</p>
       </section>
     </PageShell>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  icon,
+  className,
+  accent,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  className?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl border border-border bg-card p-4 flex flex-col justify-between ${className ?? ""}`}
+    >
+      <div
+        className={`size-8 rounded-lg grid place-items-center ${accent ? "bg-accent/15 text-accent" : "bg-primary/15 text-primary"}`}
+      >
+        {icon}
+      </div>
+      <div>
+        <p className="font-display text-2xl leading-none">{value}</p>
+        <p className="text-[10px] text-muted-foreground tracking-widest mt-1">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  label,
+  title,
+  icon,
+  link,
+  inline,
+  pulse,
+}: {
+  label: string;
+  title: string;
+  icon?: React.ReactNode;
+  link?: { to: string; label: string; search?: Record<string, unknown> };
+  inline?: boolean;
+  pulse?: boolean;
+}) {
+  return (
+    <div className={`flex items-end justify-between gap-3 ${inline ? "mb-0" : "mb-4"}`}>
+      <div>
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary tracking-widest">
+          {pulse && <span className="size-1.5 rounded-full bg-accent animate-pulse" />}
+          {label}
+        </div>
+        <h2 className="font-display text-2xl sm:text-3xl flex items-center gap-2 leading-tight mt-0.5">
+          {icon}
+          {title}
+        </h2>
+      </div>
+      {link && (
+        <Link
+          to={link.to as "/browse"}
+          search={(link.search ?? {}) as never}
+          className="text-[10px] text-primary font-bold tracking-widest flex items-center gap-1 hover:gap-1.5 transition-all"
+        >
+          {link.label} <ArrowUpRight className="size-3" />
+        </Link>
+      )}
+    </div>
   );
 }
