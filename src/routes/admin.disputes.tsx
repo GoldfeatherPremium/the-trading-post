@@ -64,8 +64,16 @@ function AdminDisputes() {
             >
               {(dd.status as string).replaceAll("_", " ").toUpperCase()}
             </span>
+            <Link
+              to="/disputes/$orderId"
+              params={{ orderId: dd.order_id as string }}
+              className="text-[10px] font-bold text-primary underline"
+            >
+              Open vault →
+            </Link>
             <span className="font-mono text-accent ml-auto">{usdt(dd.total_cents as number)}</span>
           </div>
+
           <p className="text-[10px] text-muted-foreground">
             buyer {dd.buyer_name} vs seller {dd.seller_name} · opened{" "}
             {dateTime(dd.created_at as number)} · reason:{" "}

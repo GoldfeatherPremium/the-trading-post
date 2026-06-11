@@ -44,8 +44,9 @@ function DisputeCenter() {
           return (
             <Link
               key={d.id as string}
-              to="/orders/$orderId"
+              to="/disputes/$orderId"
               params={{ orderId: d.order_id as string }}
+
               className="bg-card border border-border rounded-lg p-3 flex items-center gap-3 flex-wrap hover:border-primary/50"
             >
               <div className="flex-1 min-w-0">

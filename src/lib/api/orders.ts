@@ -416,11 +416,17 @@ export const openDispute = createServerFn({ method: "POST" })
     ))!.c;
     if (recent >= 5) fail("Dispute limit reached — contact support directly.");
 
+    const t = now();
     await run(
-      `insert into disputes (id, order_id, opened_by, reason, description, created_at) values (?,?,?,?,?,?)`,
-      [uid(), data.orderId, user.id, data.reason, data.description, now()],
+      `insert into disputes (id, order_id, opened_by, reason, description, created_at, last_activity_at) values (?,?,?,?,?,?,?)`,
+      [uid(), data.orderId, user.id, data.reason, data.description, t, t],
     );
-    await run(`update orders set status = 'disputed' where id = ?`, [data.orderId]);
+    // freeze escrow as part of the dispute open
+    await run(
+      `update orders set status = 'disputed', escrow_status = case when escrow_status = 'held' then 'on_hold' else escrow_status end, escrow_hold_reason = coalesce(escrow_hold_reason, ?), escrow_hold_at = coalesce(escrow_hold_at, ?) where id = ?`,
+      [`Dispute opened by buyer: ${data.reason}`, t, data.orderId],
+    );
+
     const convId = await getOrCreateOrderConversation(data.orderId);
     await systemMessage(
       convId,
@@ -449,10 +455,10 @@ export const sellerRespondDispute = createServerFn({ method: "POST" })
       [data.orderId],
     );
     if (!dispute || dispute.status === "resolved") fail("No open dispute on this order.");
-    await run(`update disputes set seller_response = ?, status = 'seller_responded' where id = ?`, [
-      data.response,
-      dispute!.id,
-    ]);
+    await run(
+      `update disputes set seller_response = ?, status = 'seller_responded', last_activity_at = ? where id = ?`,
+      [data.response, now(), dispute!.id],
+    );
     await notify(
       o!.buyer_id,
       "dispute_update",
