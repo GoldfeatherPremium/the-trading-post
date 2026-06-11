@@ -56,6 +56,7 @@ const productSelect = `
          u.id as s_id, u.username as s_username, u.seller_level as s_level, u.rating as s_rating,
          u.rating_count as s_rating_count, u.total_sales as s_total_sales,
          u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created,
+         u.verification_tier as s_verification, u.trust_score as s_trust,
          p.item_id, ci.name as item_name, p.insurance_days, p.expires_at
   from products p
   join categories c on c.id = p.category_id
@@ -73,6 +74,8 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
     s_completion,
     s_vacation,
     s_created,
+    s_verification,
+    s_trust,
     ...rest
   } = r;
   return {
@@ -87,6 +90,9 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
       completion_rate: s_completion as number,
       vacation_mode: s_vacation as number,
       created_at: s_created as number,
+      verification_tier:
+        (s_verification as PublicSeller["verification_tier"] | null) ?? "unverified",
+      trust_score: (s_trust as number | null) ?? 0,
     },
   };
 }
