@@ -170,6 +170,17 @@ export const saveProduct = createServerFn({ method: "POST" })
         data.insuranceDays,
         data.productId,
       ]);
+      await run(
+        `update products set product_kind = ?, subscription_provider = ?, subscription_cycle_days = ?, subscription_seats_total = ?, download_size_mb = ? where id = ?`,
+        [
+          data.productKind,
+          data.subscriptionProvider ?? null,
+          data.subscriptionCycleDays,
+          data.subscriptionSeatsTotal,
+          data.downloadSizeMb,
+          data.productId,
+        ],
+      );
       await run(`delete from product_variants where product_id = ?`, [data.productId]);
       for (let i = 0; i < data.variants.length; i++) {
         const v = data.variants[i];
