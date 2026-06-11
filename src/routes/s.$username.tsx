@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { getSellerStore } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
+import { SellerBadge } from "@/components/seller-badge";
 import { timeAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/s/$username")({
