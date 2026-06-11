@@ -596,46 +596,6 @@ async function migrate(e: Engine): Promise<void> {
       `create index if not exists idx_subscription_slots on subscription_slots(product_id, status)`,
     )
     .catch(() => {});
-  const _addColumns2: string[] = [
-
-  await e
-    .exec(
-      `create table if not exists dispute_evidence (
-        id text primary key,
-        dispute_id text not null,
-        author_id text not null,
-        author_role text not null,
-        kind text not null,
-        title text not null,
-        body text,
-        url text,
-        created_at ${big} not null
-      )`,
-    )
-    .catch(() => {});
-  await e
-    .exec(
-      `create index if not exists idx_dispute_evidence on dispute_evidence(dispute_id, created_at)`,
-    )
-    .catch(() => {});
-  await e
-    .exec(
-      `create table if not exists dispute_messages (
-        id text primary key,
-        dispute_id text not null,
-        author_id text not null,
-        author_role text not null,
-        body text not null,
-        is_internal integer not null default 0,
-        created_at ${big} not null
-      )`,
-    )
-    .catch(() => {});
-  await e
-    .exec(
-      `create index if not exists idx_dispute_messages on dispute_messages(dispute_id, created_at)`,
-    )
-    .catch(() => {});
 
   await e
     .exec(
