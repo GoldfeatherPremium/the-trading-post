@@ -4,6 +4,7 @@ import { q1, run, tx } from "../server/db.server";
 import { appContext } from "../server/app.server";
 import { fail, notify, now, uid } from "../server/core.server";
 import { requireUser } from "../server/auth.server";
+import { recomputeSellerTrust } from "../server/trust.server";
 
 export const leaveReview = createServerFn({ method: "POST" })
   .inputValidator(
@@ -57,6 +58,7 @@ export const leaveReview = createServerFn({ method: "POST" })
         o!.seller_id,
       ]);
     });
+    await recomputeSellerTrust(o!.seller_id);
     await notify(
       o!.seller_id,
       "review",

@@ -26,6 +26,7 @@ import { Route as SellerIndexRouteImport } from './routes/seller.index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SellerWalletRouteImport } from './routes/seller.wallet'
+import { Route as SellerVerificationRouteImport } from './routes/seller.verification'
 import { Route as SellerReviewsRouteImport } from './routes/seller.reviews'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
 import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
@@ -34,6 +35,7 @@ import { Route as SUsernameRouteImport } from './routes/s.$username'
 import { Route as PayOrderIdRouteImport } from './routes/pay.$orderId'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
+import { Route as AdminVerificationsRouteImport } from './routes/admin.verifications'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSellersRouteImport } from './routes/admin.sellers'
@@ -133,6 +135,11 @@ const SellerWalletRoute = SellerWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => SellerRoute,
 } as any)
+const SellerVerificationRoute = SellerVerificationRouteImport.update({
+  id: '/verification',
+  path: '/verification',
+  getParentRoute: () => SellerRoute,
+} as any)
 const SellerReviewsRoute = SellerReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
@@ -172,6 +179,11 @@ const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
   id: '/orders/$orderId',
   path: '/orders/$orderId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminVerificationsRoute = AdminVerificationsRouteImport.update({
+  id: '/verifications',
+  path: '/verifications',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
@@ -265,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/admin/sellers': typeof AdminSellersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/verifications': typeof AdminVerificationsRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -273,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
   '/admin/': typeof AdminIndexRoute
   '/orders/': typeof OrdersIndexRoute
@@ -303,6 +317,7 @@ export interface FileRoutesByTo {
   '/admin/sellers': typeof AdminSellersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/verifications': typeof AdminVerificationsRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -311,6 +326,7 @@ export interface FileRoutesByTo {
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
   '/admin': typeof AdminIndexRoute
   '/orders': typeof OrdersIndexRoute
@@ -344,6 +360,7 @@ export interface FileRoutesById {
   '/admin/sellers': typeof AdminSellersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/verifications': typeof AdminVerificationsRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -352,6 +369,7 @@ export interface FileRoutesById {
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
   '/admin/': typeof AdminIndexRoute
   '/orders/': typeof OrdersIndexRoute
@@ -386,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin/sellers'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/verifications'
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
@@ -394,6 +413,7 @@ export interface FileRouteTypes {
     | '/seller/orders'
     | '/seller/products'
     | '/seller/reviews'
+    | '/seller/verification'
     | '/seller/wallet'
     | '/admin/'
     | '/orders/'
@@ -424,6 +444,7 @@ export interface FileRouteTypes {
     | '/admin/sellers'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/verifications'
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
@@ -432,6 +453,7 @@ export interface FileRouteTypes {
     | '/seller/orders'
     | '/seller/products'
     | '/seller/reviews'
+    | '/seller/verification'
     | '/seller/wallet'
     | '/admin'
     | '/orders'
@@ -464,6 +486,7 @@ export interface FileRouteTypes {
     | '/admin/sellers'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/verifications'
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
@@ -472,6 +495,7 @@ export interface FileRouteTypes {
     | '/seller/orders'
     | '/seller/products'
     | '/seller/reviews'
+    | '/seller/verification'
     | '/seller/wallet'
     | '/admin/'
     | '/orders/'
@@ -621,6 +645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SellerWalletRouteImport
       parentRoute: typeof SellerRoute
     }
+    '/seller/verification': {
+      id: '/seller/verification'
+      path: '/verification'
+      fullPath: '/seller/verification'
+      preLoaderRoute: typeof SellerVerificationRouteImport
+      parentRoute: typeof SellerRoute
+    }
     '/seller/reviews': {
       id: '/seller/reviews'
       path: '/reviews'
@@ -676,6 +707,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/orders/$orderId'
       preLoaderRoute: typeof OrdersOrderIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/verifications': {
+      id: '/admin/verifications'
+      path: '/verifications'
+      fullPath: '/admin/verifications'
+      preLoaderRoute: typeof AdminVerificationsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/users': {
       id: '/admin/users'
@@ -784,6 +822,7 @@ interface AdminRouteChildren {
   AdminSellersRoute: typeof AdminSellersRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminVerificationsRoute: typeof AdminVerificationsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -800,6 +839,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSellersRoute: AdminSellersRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminVerificationsRoute: AdminVerificationsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -810,6 +850,7 @@ interface SellerRouteChildren {
   SellerOrdersRoute: typeof SellerOrdersRoute
   SellerProductsRoute: typeof SellerProductsRoute
   SellerReviewsRoute: typeof SellerReviewsRoute
+  SellerVerificationRoute: typeof SellerVerificationRoute
   SellerWalletRoute: typeof SellerWalletRoute
   SellerIndexRoute: typeof SellerIndexRoute
   SellerStockProductIdRoute: typeof SellerStockProductIdRoute
@@ -820,6 +861,7 @@ const SellerRouteChildren: SellerRouteChildren = {
   SellerOrdersRoute: SellerOrdersRoute,
   SellerProductsRoute: SellerProductsRoute,
   SellerReviewsRoute: SellerReviewsRoute,
+  SellerVerificationRoute: SellerVerificationRoute,
   SellerWalletRoute: SellerWalletRoute,
   SellerIndexRoute: SellerIndexRoute,
   SellerStockProductIdRoute: SellerStockProductIdRoute,
@@ -851,13 +893,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

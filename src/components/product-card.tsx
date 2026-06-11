@@ -6,6 +6,7 @@ import { listFavoriteIds, toggleFavorite } from "@/lib/api/extras";
 import { useMe } from "@/hooks/use-me";
 import { productImage } from "@/lib/images";
 import { usdtShort } from "@/lib/format";
+import { VerificationBadge } from "./seller-badge";
 
 export function useFavorites() {
   const { me } = useMe();
@@ -93,6 +94,7 @@ export function ProductCard({ product }: { product: PublicProduct }) {
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
               <span className="size-1.5 rounded-full bg-accent inline-block" />
               {product.seller.username}
+              <VerificationBadge tier={product.seller.verification_tier} size="xs" showLabel={false} />
               <span className="flex items-center gap-0.5 text-yellow-400">
                 <Star className="size-2.5 fill-current" />
                 {product.seller.rating > 0 ? product.seller.rating.toFixed(1) : "new"}

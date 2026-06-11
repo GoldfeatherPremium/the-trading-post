@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { getSellerStore } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
+import { SellerBadge } from "@/components/seller-badge";
 import { timeAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/s/$username")({
@@ -39,18 +40,20 @@ function SellerStorePage() {
           {s.username.slice(0, 2)}
         </div>
         <div className="flex-1">
-          <h1 className="font-display text-3xl flex items-center gap-2">
-            {s.username}
-            <span className="text-[10px] bg-primary/15 text-primary px-2 py-1 rounded font-bold font-body">
-              LEVEL {s.seller_level}
-            </span>
+          <h1 className="font-display text-3xl">{s.username}</h1>
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            <SellerBadge
+              tier={s.verification_tier}
+              level={s.seller_level}
+              score={s.trust_score}
+            />
             {s.vacation_mode ? (
-              <span className="text-[10px] bg-yellow-500/15 text-yellow-400 px-2 py-1 rounded font-bold font-body">
+              <span className="text-[10px] bg-yellow-500/15 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/40 font-bold">
                 ON VACATION
               </span>
             ) : null}
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1">
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
             ★{" "}
             {s.rating > 0 ? `${s.rating.toFixed(1)} (${s.rating_count} reviews)` : "no reviews yet"}{" "}
             · {s.total_sales.toLocaleString()} sales · {s.completion_rate.toFixed(0)}% completion ·

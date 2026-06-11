@@ -540,6 +540,7 @@ async function migrate(e: Engine): Promise<void> {
   }
   // additive columns for databases created before these features existed
   const big = dialect === "postgres" ? "bigint" : "integer";
+  const real = dialect === "postgres" ? "double precision" : "real";
   const addColumns = [
     `alter table orders add column discount_cents ${big} not null default 0`,
     `alter table orders add column coupon_code text`,
@@ -548,8 +549,34 @@ async function migrate(e: Engine): Promise<void> {
     `alter table products add column expires_at ${big}`,
     `alter table products add column insurance_days integer not null default 0`,
     `alter table orders add column variant_title text`,
+    // --- Seller trust system ---
+    `alter table users add column verification_tier text not null default 'unverified'`,
+    `alter table users add column trust_score ${real} not null default 0`,
+    `alter table users add column refund_count integer not null default 0`,
+    `alter table users add column dispute_count integer not null default 0`,
+    `alter table users add column avg_delivery_minutes integer not null default 0`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists
   }
+  await e
+    .exec(
+      `create table if not exists seller_verifications (
+        id text primary key,
+        user_id text not null references users(id),
+        tier_requested text not null,
+        legal_name text not null,
+        country text not null,
+        business_name text,
+        business_registration text,
+        id_doc_ref text,
+        notes text,
+        status text not null default 'pending',
+        reviewed_by text,
+        admin_note text,
+        created_at ${big} not null,
+        reviewed_at ${big}
+      )`,
+    )
+    .catch(() => {});
 }
