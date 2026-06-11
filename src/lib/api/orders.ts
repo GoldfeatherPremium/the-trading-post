@@ -376,6 +376,7 @@ export const buyerCancelSlaBreach = createServerFn({ method: "POST" })
       `update users set completion_rate = case when completion_rate - 1 < 0 then 0 else completion_rate - 1 end where id = ?`,
       [o!.seller_id],
     );
+    await recomputeSellerTrust(o!.seller_id);
     await audit(user.id, "order.cancel_sla", "order", data.orderId);
     return { ok: true };
   });
