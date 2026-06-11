@@ -1,13 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { getHomeData, browseProducts, listCatalogItems } from "@/lib/api/catalog";
+import {
+  getHomeData,
+  browseProducts,
+  listCatalogItems,
+  browseFacets,
+  quickSearch,
+} from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { SmartSearch } from "@/components/smart-search";
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 const searchSchema = z.object({
   category: z.string().optional(),
@@ -42,6 +48,43 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   );
 }
 
+function FacetGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-display text-[11px] tracking-widest text-muted-foreground mb-2">
+        {title.toUpperCase()}
+      </h3>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function FacetButton({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between gap-2 px-2 py-1 rounded text-[11px] transition-colors ${
+        active
+          ? "bg-primary/20 text-primary font-bold"
+          : "hover:bg-secondary text-foreground/80"
+      }`}
+    >
+      <span className="truncate text-left">{label}</span>
+      <span className="font-mono text-[10px] text-muted-foreground shrink-0">{count}</span>
+    </button>
+  );
+}
+
 function BrowsePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/browse" });
@@ -67,6 +110,31 @@ function BrowsePage() {
           page: search.page ?? 1,
         },
       }),
+  });
+
+  const { data: facets } = useQuery({
+    placeholderData: keepPreviousData,
+    queryKey: ["browseFacets", search.q, search.category, search.item, search.delivery, search.inStock, search.minPrice, search.maxPrice],
+    queryFn: () =>
+      browseFacets({
+        data: {
+          category: search.category,
+          item: search.item,
+          q: search.q,
+          delivery: search.delivery,
+          inStock: search.inStock,
+          minPrice: search.minPrice,
+          maxPrice: search.maxPrice,
+        },
+      }),
+  });
+
+  // Did-you-mean: only fire when a query is set and results are sparse.
+  const { data: suggestData } = useQuery({
+    queryKey: ["dym", search.q],
+    queryFn: () => quickSearch({ data: { q: search.q ?? "" } }),
+    enabled: !!search.q && (data?.total ?? 0) < 3,
+    staleTime: 60_000,
   });
 
   const setSearch = (patch: Partial<typeof search>) =>
@@ -253,23 +321,108 @@ function BrowsePage() {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-card border border-border rounded-lg h-56 animate-pulse" />
-          ))}
-        </div>
-      ) : data?.items.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">
-          No products match your filters.
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {data?.items.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+      {search.q && suggestData?.suggestion && (
+        <div className="mb-4 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs flex items-center gap-2">
+          <Sparkles className="size-3.5 text-primary" />
+          <span className="text-muted-foreground">Did you mean</span>
+          <button
+            onClick={() => setSearch({ q: suggestData.suggestion! })}
+            className="font-bold text-primary underline underline-offset-2"
+          >
+            {suggestData.suggestion}
+          </button>
+          ?
         </div>
       )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-5">
+        {/* Facet rail */}
+        <aside className="hidden lg:block space-y-5 sticky top-20 self-start">
+          {facets?.categories && facets.categories.length > 1 && (
+            <FacetGroup title="Category">
+              {facets.categories.map((c) => (
+                <FacetButton
+                  key={c.slug}
+                  active={search.category === c.slug}
+                  onClick={() =>
+                    setSearch({ category: search.category === c.slug ? undefined : c.slug })
+                  }
+                  label={`${c.icon} ${c.name}`}
+                  count={c.c}
+                />
+              ))}
+            </FacetGroup>
+          )}
+          {facets?.delivery && facets.delivery.length > 1 && (
+            <FacetGroup title="Delivery">
+              {facets.delivery.map((d) => (
+                <FacetButton
+                  key={d.delivery_type}
+                  active={search.delivery === d.delivery_type}
+                  onClick={() =>
+                    setSearch({
+                      delivery:
+                        search.delivery === d.delivery_type
+                          ? undefined
+                          : (d.delivery_type as "auto" | "manual"),
+                    })
+                  }
+                  label={d.delivery_type === "auto" ? "⚡ Instant" : "🕐 Manual"}
+                  count={d.c}
+                />
+              ))}
+            </FacetGroup>
+          )}
+          {facets?.tiers && facets.tiers.filter((t) => t.verification_tier !== "unverified").length > 0 && (
+            <FacetGroup title="Seller tier">
+              {facets.tiers.map((t) => (
+                <div
+                  key={t.verification_tier}
+                  className="flex items-center justify-between text-[11px] py-0.5"
+                >
+                  <span className="capitalize text-muted-foreground">{t.verification_tier}</span>
+                  <span className="font-mono text-muted-foreground">{t.c}</span>
+                </div>
+              ))}
+            </FacetGroup>
+          )}
+          {facets?.items && facets.items.length > 0 && (
+            <FacetGroup title="Game / Item">
+              {facets.items.slice(0, 12).map((it) => (
+                <FacetButton
+                  key={it.id}
+                  active={search.item === it.id}
+                  onClick={() =>
+                    setSearch({ item: search.item === it.id ? undefined : it.id })
+                  }
+                  label={it.name}
+                  count={it.c}
+                />
+              ))}
+            </FacetGroup>
+          )}
+        </aside>
+
+        <div>
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-card border border-border rounded-lg h-56 animate-pulse" />
+              ))}
+            </div>
+          ) : data?.items.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground text-sm">
+              No products match your filters.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+              {data?.items.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {data && data.pageCount > 1 && (
         <div className="flex justify-center gap-2 mt-8">

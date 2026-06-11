@@ -330,6 +330,21 @@ export function SmartSearch({
               {results && flatItems.length === 0 && !isFetching && (
                 <div className="p-4 text-center text-xs text-muted-foreground space-y-2">
                   <p>No matches for "{debounced}"</p>
+                  {results.suggestion && (
+                    <p>
+                      Did you mean{" "}
+                      <button
+                        onClick={() => {
+                          setQ(results.suggestion!);
+                          setDebounced(results.suggestion!);
+                        }}
+                        className="font-bold text-primary underline underline-offset-2"
+                      >
+                        {results.suggestion}
+                      </button>
+                      ?
+                    </p>
+                  )}
                   <button
                     onClick={() => submit()}
                     className="text-primary font-bold text-xs"
