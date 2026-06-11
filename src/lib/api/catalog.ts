@@ -116,8 +116,9 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async () =>
     ),
     q(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`),
     q<PublicSeller>(
-      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
-       from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
+      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at,
+              verification_tier, trust_score
+       from users where seller_status = 'approved' and is_banned = 0 order by trust_score desc, total_sales desc limit 6`,
     ),
     q<{ product_title: string; total_cents: number; created_at: number; buyer: string }>(
       `select o.product_title, o.total_cents, o.created_at, u.username as buyer
