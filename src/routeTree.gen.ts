@@ -13,6 +13,9 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as SellerRouteImport } from './routes/seller'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MenuRouteImport } from './routes/menu'
+import { Route as FavoritesRouteImport } from './routes/favorites'
+import { Route as DisputesRouteImport } from './routes/disputes'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -37,8 +40,10 @@ import { Route as AdminSellersRouteImport } from './routes/admin.sellers'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminModerationRouteImport } from './routes/admin.moderation'
+import { Route as AdminItemsRouteImport } from './routes/admin.items'
 import { Route as AdminFinanceRouteImport } from './routes/admin.finance'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
+import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
@@ -61,6 +66,21 @@ const SellRoute = SellRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MenuRoute = MenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavoritesRoute = FavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisputesRoute = DisputesRouteImport.update({
+  id: '/disputes',
+  path: '/disputes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -183,6 +203,11 @@ const AdminModerationRoute = AdminModerationRouteImport.update({
   path: '/moderation',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminItemsRoute = AdminItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFinanceRoute = AdminFinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
@@ -191,6 +216,11 @@ const AdminFinanceRoute = AdminFinanceRouteImport.update({
 const AdminDisputesRoute = AdminDisputesRouteImport.update({
   id: '/disputes',
   path: '/disputes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCouponsRoute = AdminCouponsRouteImport.update({
+  id: '/coupons',
+  path: '/coupons',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
@@ -216,14 +246,19 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/disputes': typeof DisputesRoute
+  '/favorites': typeof FavoritesRoute
+  '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
   '/wallet': typeof WalletRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/finance': typeof AdminFinanceRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -250,13 +285,18 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/disputes': typeof DisputesRoute
+  '/favorites': typeof FavoritesRoute
+  '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/wallet': typeof WalletRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/finance': typeof AdminFinanceRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -285,14 +325,19 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/disputes': typeof DisputesRoute
+  '/favorites': typeof FavoritesRoute
+  '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
   '/wallet': typeof WalletRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/finance': typeof AdminFinanceRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -322,14 +367,19 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/disputes'
+    | '/favorites'
+    | '/menu'
     | '/notifications'
     | '/sell'
     | '/seller'
     | '/wallet'
     | '/admin/audit'
     | '/admin/categories'
+    | '/admin/coupons'
     | '/admin/disputes'
     | '/admin/finance'
+    | '/admin/items'
     | '/admin/moderation'
     | '/admin/orders'
     | '/admin/products'
@@ -356,13 +406,18 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/disputes'
+    | '/favorites'
+    | '/menu'
     | '/notifications'
     | '/sell'
     | '/wallet'
     | '/admin/audit'
     | '/admin/categories'
+    | '/admin/coupons'
     | '/admin/disputes'
     | '/admin/finance'
+    | '/admin/items'
     | '/admin/moderation'
     | '/admin/orders'
     | '/admin/products'
@@ -390,14 +445,19 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/disputes'
+    | '/favorites'
+    | '/menu'
     | '/notifications'
     | '/sell'
     | '/seller'
     | '/wallet'
     | '/admin/audit'
     | '/admin/categories'
+    | '/admin/coupons'
     | '/admin/disputes'
     | '/admin/finance'
+    | '/admin/items'
     | '/admin/moderation'
     | '/admin/orders'
     | '/admin/products'
@@ -426,6 +486,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   ChatRoute: typeof ChatRoute
+  DisputesRoute: typeof DisputesRoute
+  FavoritesRoute: typeof FavoritesRoute
+  MenuRoute: typeof MenuRoute
   NotificationsRoute: typeof NotificationsRoute
   SellRoute: typeof SellRoute
   SellerRoute: typeof SellerRouteWithChildren
@@ -465,6 +528,27 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/menu': {
+      id: '/menu'
+      path: '/menu'
+      fullPath: '/menu'
+      preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favorites': {
+      id: '/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof FavoritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disputes': {
+      id: '/disputes'
+      path: '/disputes'
+      fullPath: '/disputes'
+      preLoaderRoute: typeof DisputesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -635,6 +719,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminModerationRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/items': {
+      id: '/admin/items'
+      path: '/items'
+      fullPath: '/admin/items'
+      preLoaderRoute: typeof AdminItemsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/finance': {
       id: '/admin/finance'
       path: '/finance'
@@ -647,6 +738,13 @@ declare module '@tanstack/react-router' {
       path: '/disputes'
       fullPath: '/admin/disputes'
       preLoaderRoute: typeof AdminDisputesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/coupons': {
+      id: '/admin/coupons'
+      path: '/coupons'
+      fullPath: '/admin/coupons'
+      preLoaderRoute: typeof AdminCouponsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/categories': {
@@ -676,8 +774,10 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminCouponsRoute: typeof AdminCouponsRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
   AdminFinanceRoute: typeof AdminFinanceRoute
+  AdminItemsRoute: typeof AdminItemsRoute
   AdminModerationRoute: typeof AdminModerationRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -690,8 +790,10 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminCouponsRoute: AdminCouponsRoute,
   AdminDisputesRoute: AdminDisputesRoute,
   AdminFinanceRoute: AdminFinanceRoute,
+  AdminItemsRoute: AdminItemsRoute,
   AdminModerationRoute: AdminModerationRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
@@ -733,6 +835,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   ChatRoute: ChatRoute,
+  DisputesRoute: DisputesRoute,
+  FavoritesRoute: FavoritesRoute,
+  MenuRoute: MenuRoute,
   NotificationsRoute: NotificationsRoute,
   SellRoute: SellRoute,
   SellerRoute: SellerRouteWithChildren,

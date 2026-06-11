@@ -38,6 +38,10 @@ export interface PublicProduct {
   category_name: string;
   category_slug: string;
   risk_tier: string;
+  item_id: string | null;
+  item_name: string | null;
+  insurance_days: number;
+  expires_at: number | null;
   seller: PublicSeller;
 }
 
@@ -49,10 +53,12 @@ const productSelect = `
          c.risk_tier,
          u.id as s_id, u.username as s_username, u.seller_level as s_level, u.rating as s_rating,
          u.rating_count as s_rating_count, u.total_sales as s_total_sales,
-         u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created
+         u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created,
+         p.item_id, ci.name as item_name, p.insurance_days, p.expires_at
   from products p
   join categories c on c.id = p.category_id
-  join users u on u.id = p.seller_id`;
+  join users u on u.id = p.seller_id
+  left join catalog_items ci on ci.id = p.item_id`;
 
 function mapProduct(r: Record<string, unknown>): PublicProduct {
   const {
@@ -85,39 +91,34 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
 
 export const getHomeData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
-  const categories = await q<{
-    id: string;
-    name: string;
-    slug: string;
-    icon: string;
-    default_warranty_hours: number;
-    commission_pct: number;
-    risk_tier: string;
-  }>(
-    `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
-  );
-  const trending = (
-    await q(
+  const [categories, trendingRows, newestRows, topSellers, recentSales] = await Promise.all([
+    q<{
+      id: string;
+      name: string;
+      slug: string;
+      icon: string;
+      default_warranty_hours: number;
+      commission_pct: number;
+      risk_tier: string;
+    }>(
+      `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
+    ),
+    q(
       `${productSelect} where p.status = 'active' order by p.sold_count desc, p.views desc limit 8`,
-    )
-  ).map(mapProduct);
-  const newest = (
-    await q(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`)
-  ).map(mapProduct);
-  const topSellers = await q<PublicSeller>(
-    `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
-     from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
-  );
-  const recentSales = await q<{
-    product_title: string;
-    total_cents: number;
-    created_at: number;
-    buyer: string;
-  }>(
-    `select o.product_title, o.total_cents, o.created_at, u.username as buyer
-     from orders o join users u on u.id = o.buyer_id
-     where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
-  );
+    ),
+    q(`${productSelect} where p.status = 'active' order by p.created_at desc limit 8`),
+    q<PublicSeller>(
+      `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at
+       from users where seller_status = 'approved' and is_banned = 0 order by total_sales desc limit 6`,
+    ),
+    q<{ product_title: string; total_cents: number; created_at: number; buyer: string }>(
+      `select o.product_title, o.total_cents, o.created_at, u.username as buyer
+       from orders o join users u on u.id = o.buyer_id
+       where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
+    ),
+  ]);
+  const trending = trendingRows.map(mapProduct);
+  const newest = newestRows.map(mapProduct);
   return { categories, trending, newest, topSellers, recentSales };
 });
 
@@ -125,6 +126,7 @@ export const browseProducts = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
       category: z.string().optional(),
+      item: z.string().optional(),
       q: z.string().max(100).optional(),
       delivery: z.enum(["auto", "manual"]).optional(),
       minPrice: z.number().optional(),
@@ -141,6 +143,10 @@ export const browseProducts = createServerFn({ method: "GET" })
     if (data.category) {
       where.push(`c.slug = ?`);
       params.push(data.category);
+    }
+    if (data.item) {
+      where.push(`p.item_id = ?`);
+      params.push(data.item);
     }
     if (data.q) {
       const like = `%${data.q.toLowerCase()}%`;
@@ -165,7 +171,7 @@ export const browseProducts = createServerFn({ method: "GET" })
       where.push(`(p.delivery_type = 'manual' or p.stock_count > 0)`);
     }
     const order = {
-      popular: `p.sold_count desc, p.views desc`,
+      popular: `p.insurance_days desc, p.sold_count desc, p.views desc`,
       price_asc: `p.price_cents asc`,
       price_desc: `p.price_cents desc`,
       newest: `p.created_at desc`,
@@ -173,16 +179,18 @@ export const browseProducts = createServerFn({ method: "GET" })
     }[data.sort];
     const PAGE = 24;
     const whereSql = where.join(" and ");
-    const total = (await q1<{ c: number }>(
-      `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
-      params,
-    ))!.c;
-    const items = (
-      await q(
+    const [totalRow, itemRows] = await Promise.all([
+      q1<{ c: number }>(
+        `select count(*) c from products p join categories c on c.id = p.category_id join users u on u.id = p.seller_id where ${whereSql}`,
+        params,
+      ),
+      q(
         `${productSelect} where ${whereSql} order by ${order} limit ${PAGE} offset ${(data.page - 1) * PAGE}`,
         params,
-      )
-    ).map(mapProduct);
+      ),
+    ]);
+    const total = totalRow!.c;
+    const items = itemRows.map(mapProduct);
     return { items, total, page: data.page, pageCount: Math.max(1, Math.ceil(total / PAGE)) };
   });
 
@@ -191,23 +199,29 @@ export const getProduct = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const row = await q1(`${productSelect} where p.slug = ?`, [data.slug]);
-    if (!row) return { product: null, reviews: [] };
+    if (!row) return { product: null, reviews: [], variants: [] };
     const product = mapProduct(row);
     if (product.status !== "active" && product.status !== "out_of_stock")
-      return { product: null, reviews: [] };
-    await run(`update products set views = views + 1 where id = ?`, [product.id]);
-    const reviews = await q<{
-      rating: number;
-      comment: string | null;
-      seller_reply: string | null;
-      created_at: number;
-      buyer: string;
-    }>(
-      `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer
+      return { product: null, reviews: [], variants: [] };
+    const [, reviews, variants] = await Promise.all([
+      run(`update products set views = views + 1 where id = ?`, [product.id]),
+      q<{
+        rating: number;
+        comment: string | null;
+        seller_reply: string | null;
+        created_at: number;
+        buyer: string;
+      }>(
+        `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer
        from reviews r join users u on u.id = r.buyer_id where r.product_id = ? order by r.created_at desc limit 30`,
-      [product.id],
-    );
-    return { product, reviews };
+        [product.id],
+      ),
+      q<{ id: string; title: string; price_cents: number }>(
+        `select id, title, price_cents from product_variants where product_id = ? order by sort`,
+        [product.id],
+      ),
+    ]);
+    return { product, reviews, variants };
   });
 
 export const getSellerStore = createServerFn({ method: "GET" })
@@ -220,24 +234,48 @@ export const getSellerStore = createServerFn({ method: "GET" })
       [data.username],
     );
     if (!seller) return { seller: null, products: [], reviews: [] };
-    const products = (
-      await q(
+    const [productRows, reviews] = await Promise.all([
+      q(
         `${productSelect} where p.seller_id = ? and p.status in ('active','out_of_stock') order by p.sold_count desc`,
         [seller.id],
-      )
-    ).map(mapProduct);
-    const reviews = await q<{
-      rating: number;
-      comment: string | null;
-      seller_reply: string | null;
-      created_at: number;
-      buyer: string;
-      product_title: string;
-    }>(
-      `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer, o.product_title
+      ),
+      q<{
+        rating: number;
+        comment: string | null;
+        seller_reply: string | null;
+        created_at: number;
+        buyer: string;
+        product_title: string;
+      }>(
+        `select r.rating, r.comment, r.seller_reply, r.created_at, u.username as buyer, o.product_title
        from reviews r join users u on u.id = r.buyer_id join orders o on o.id = r.order_id
        where r.seller_id = ? order by r.created_at desc limit 50`,
-      [seller.id],
-    );
+        [seller.id],
+      ),
+    ]);
+    const products = productRows.map(mapProduct);
     return { seller, products, reviews };
   });
+
+export interface CatalogItem {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: number;
+  categoryIds: string[];
+}
+
+export const listCatalogItems = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  const [items, maps] = await Promise.all([
+    q<{ id: string; name: string; slug: string; is_active: number }>(
+      `select id, name, slug, is_active from catalog_items where is_active = 1 order by sort, name`,
+    ),
+    q<{ item_id: string; category_id: string }>(
+      `select item_id, category_id from catalog_item_categories`,
+    ),
+  ]);
+  const byItem: Record<string, string[]> = {};
+  for (const m of maps) (byItem[m.item_id] ??= []).push(m.category_id);
+  return { items: items.map((i) => ({ ...i, categoryIds: byItem[i.id] ?? [] })) };
+});

@@ -15,6 +15,7 @@ import {
   uid,
 } from "../server/core.server";
 import { isStaff, requireSeller, requireUser } from "../server/auth.server";
+import { validateCoupon } from "../server/coupons.server";
 import {
   completeOrder,
   confirmPayment,
@@ -22,7 +23,6 @@ import {
   getOrderRow,
   markManualDelivered,
   refundOrder,
-  sweepLifecycle,
   type OrderRow,
 } from "../server/lifecycle.server";
 
@@ -36,6 +36,8 @@ export const createOrder = createServerFn({ method: "POST" })
       qty: z.number().int().min(1).max(1000),
       buyerInfo: z.string().max(2000).optional(),
       network: z.enum(["TRC20", "BEP20"]).default("TRC20"),
+      couponCode: z.string().max(40).optional(),
+      variantId: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -85,6 +87,22 @@ export const createOrder = createServerFn({ method: "POST" })
     ))!.c;
     if (openUnpaid >= 5) fail("You have too many unpaid orders. Pay or cancel them first.");
 
+    let unitPrice = p!.price_cents;
+    let titleSnapshot = p!.title;
+    let variantTitle: string | null = null;
+    if (data.variantId) {
+      const v = await q1<{ title: string; price_cents: number }>(
+        `select title, price_cents from product_variants where id = ? and product_id = ?`,
+        [data.variantId, p!.id],
+      );
+      if (!v) fail("Invalid option selected.");
+      unitPrice = v!.price_cents;
+      variantTitle = v!.title;
+      titleSnapshot = `${p!.title} — ${v!.title}`;
+    }
+    const insuranceDays = (p! as unknown as { insurance_days?: number }).insurance_days ?? 0;
+    const warrantyHours = (p!.warranty_hours ?? p!.default_warranty_hours) + insuranceDays * 24;
+
     const orderId = uid();
     const t = now();
     await tx(async () => {
@@ -105,35 +123,48 @@ export const createOrder = createServerFn({ method: "POST" })
           [p!.id, p!.id],
         );
       }
-      const total = p!.price_cents * data.qty;
+      const grossTotal = unitPrice * data.qty;
+      let discount = 0;
+      let couponCode: string | null = null;
+      if (data.couponCode?.trim()) {
+        const coupon = await validateCoupon(data.couponCode, grossTotal);
+        discount = Math.round((grossTotal * coupon.pct_off) / 100);
+        couponCode = coupon.code;
+        await run(`update coupons set used_count = used_count + 1 where id = ?`, [coupon.id]);
+      }
+      const total = grossTotal - discount;
       const commissionPct = p!.cat_commission;
       const commission = Math.round((total * commissionPct) / 100);
       const expiresAt = t + settings.payment_window_minutes * 60_000;
       await run(
         `insert into orders (id, order_no, buyer_id, seller_id, product_id, product_title, image_key, qty,
           unit_price_cents, total_cents, commission_pct, commission_cents, seller_net_cents, status,
-          delivery_type, delivery_sla_minutes, warranty_hours, buyer_info, expires_at, created_at)
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?, 'awaiting_payment', ?,?,?,?,?,?)`,
+          delivery_type, delivery_sla_minutes, warranty_hours, buyer_info, expires_at, created_at,
+          discount_cents, coupon_code, variant_title)
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?, 'awaiting_payment', ?,?,?,?,?,?,?,?,?)`,
         [
           orderId,
           makeOrderNo(),
           user.id,
           p!.seller_id,
           p!.id,
-          p!.title,
+          titleSnapshot,
           p!.image_key,
           data.qty,
-          p!.price_cents,
+          unitPrice,
           total,
           commissionPct,
           commission,
           total - commission,
           p!.delivery_type,
           p!.delivery_sla_minutes,
-          p!.warranty_hours ?? p!.default_warranty_hours,
+          warrantyHours,
           data.buyerInfo ?? null,
           expiresAt,
           t,
+          discount,
+          couponCode,
+          variantTitle,
         ],
       );
       await run(
@@ -213,7 +244,6 @@ export const listMyOrders = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const user = data.role === "seller" ? await requireSeller() : await requireUser();
-    await sweepLifecycle();
     const col = data.role === "seller" ? "seller_id" : "buyer_id";
     const orders = await q<OrderRow & { counterparty: string }>(
       `select o.*, u.username as counterparty from orders o
@@ -229,62 +259,60 @@ export const getOrder = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await appContext();
     const user = await requireUser();
-    await sweepLifecycle();
     const o = await getOrderRow(data.orderId);
     if (!o || (o.buyer_id !== user.id && o.seller_id !== user.id && !isStaff(user)))
       fail("Order not found.");
     const isBuyer = o!.buyer_id === user.id;
-    const deliveries = await q<{
-      id: string;
-      type: string;
-      payload: string | null;
-      note: string | null;
-      created_at: number;
-    }>(
-      `select id, type, payload, note, created_at from order_deliveries where order_id = ? order by created_at`,
-      [data.orderId],
-    );
+    const [deliveries, dispute, review, buyer, seller, conversationId, settings] =
+      await Promise.all([
+        q<{
+          id: string;
+          type: string;
+          payload: string | null;
+          note: string | null;
+          created_at: number;
+        }>(
+          `select id, type, payload, note, created_at from order_deliveries where order_id = ? order by created_at`,
+          [data.orderId],
+        ),
+        q1<{
+          id: string;
+          reason: string;
+          description: string | null;
+          seller_response: string | null;
+          status: string;
+          resolution: string | null;
+          resolution_cents: number | null;
+          created_at: number;
+          resolved_at: number | null;
+          opened_by: string;
+        }>(`select * from disputes where order_id = ?`, [data.orderId]),
+        q1<{
+          rating: number;
+          comment: string | null;
+          seller_reply: string | null;
+          created_at: number;
+        }>(`select rating, comment, seller_reply, created_at from reviews where order_id = ?`, [
+          data.orderId,
+        ]),
+        q1<{ username: string }>(`select username from users where id = ?`, [o!.buyer_id]),
+        q1<{ username: string }>(`select username from users where id = ?`, [o!.seller_id]),
+        getOrCreateOrderConversation(data.orderId),
+        getSettings(),
+      ]);
     // codes are only revealed to the buyer (and staff for disputes)
     const safeDeliveries = deliveries.map((del) => ({
       ...del,
       payload:
         isBuyer || isStaff(user) ? del.payload : del.payload ? "•••• (visible to buyer)" : null,
     }));
-    const dispute = await q1<{
-      id: string;
-      reason: string;
-      description: string | null;
-      seller_response: string | null;
-      status: string;
-      resolution: string | null;
-      resolution_cents: number | null;
-      created_at: number;
-      resolved_at: number | null;
-      opened_by: string;
-    }>(`select * from disputes where order_id = ?`, [data.orderId]);
-    const review = await q1<{
-      rating: number;
-      comment: string | null;
-      seller_reply: string | null;
-      created_at: number;
-    }>(`select rating, comment, seller_reply, created_at from reviews where order_id = ?`, [
-      data.orderId,
-    ]);
-    const buyer = (await q1<{ username: string }>(`select username from users where id = ?`, [
-      o!.buyer_id,
-    ]))!;
-    const seller = (await q1<{ username: string }>(`select username from users where id = ?`, [
-      o!.seller_id,
-    ]))!;
-    const conversationId = await getOrCreateOrderConversation(data.orderId);
-    const settings = await getSettings();
     return {
       order: o!,
       deliveries: safeDeliveries,
       dispute: dispute ?? null,
       review: review ?? null,
-      buyerName: buyer.username,
-      sellerName: seller.username,
+      buyerName: buyer!.username,
+      sellerName: seller!.username,
       conversationId,
       viewerIsBuyer: isBuyer,
       viewerIsSeller: o!.seller_id === user.id,

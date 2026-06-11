@@ -1,6 +1,5 @@
 -- X-VAULT marketplace schema.
--- The app applies this automatically on first boot when DATABASE_URL is set,
--- so running it manually in the Supabase SQL editor is optional.
+-- Applied automatically on first boot when DATABASE_URL is set.
 
 
 create table if not exists users (
@@ -271,3 +270,75 @@ create table if not exists site_settings (
   maintenance_mode integer not null default 0
 );
 insert into site_settings (id) values (1) on conflict (id) do nothing;
+
+create table if not exists favorites (
+  user_id text not null references users(id),
+  product_id text not null references products(id),
+  created_at bigint not null,
+  primary key (user_id, product_id)
+);
+
+create index if not exists idx_products_status on products(status, sold_count);
+create index if not exists idx_products_seller on products(seller_id, status);
+create index if not exists idx_deposits_order on deposits(order_id);
+create index if not exists idx_conv_order on conversations(order_id);
+create index if not exists idx_disputes_status on disputes(status);
+create index if not exists idx_withdrawals_status on withdrawals(status, created_at);
+
+create table if not exists catalog_items (
+  id text primary key,
+  name text not null,
+  slug text unique not null,
+  is_active integer not null default 1,
+  sort integer not null default 0,
+  created_at bigint not null
+);
+
+-- allowed sub-categories per item; no rows = all categories allowed
+create table if not exists catalog_item_categories (
+  item_id text not null references catalog_items(id),
+  category_id text not null references categories(id),
+  primary key (item_id, category_id)
+);
+
+create table if not exists item_suggestions (
+  id text primary key,
+  user_id text not null references users(id),
+  name text not null,
+  note text,
+  status text not null default 'pending',
+  admin_note text,
+  reviewed_by text,
+  created_at bigint not null,
+  reviewed_at bigint
+);
+
+create table if not exists product_variants (
+  id text primary key,
+  product_id text not null references products(id),
+  title text not null,
+  price_cents bigint not null,
+  sort integer not null default 0
+);
+create index if not exists idx_variants_product on product_variants(product_id);
+
+create table if not exists coupons (
+  id text primary key,
+  code text unique not null,
+  pct_off double precision not null,
+  min_total_cents bigint not null default 0,
+  max_uses integer not null default 0,
+  used_count integer not null default 0,
+  expires_at bigint,
+  is_active integer not null default 1,
+  created_at bigint not null
+);
+
+-- additive columns applied by the app on boot
+alter table orders add column if not exists discount_cents bigint not null default 0;
+alter table orders add column if not exists coupon_code text;
+alter table orders add column if not exists variant_title text;
+alter table site_settings add column if not exists announcement text;
+alter table products add column if not exists item_id text;
+alter table products add column if not exists expires_at bigint;
+alter table products add column if not exists insurance_days integer not null default 0;

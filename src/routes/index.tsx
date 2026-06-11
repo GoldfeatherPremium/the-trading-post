@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { ShieldCheck, Zap, Headphones, Star, TrendingUp, Sparkles } from "lucide-react";
 import { getHomeData } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { usdtShort, timeAgo } from "@/lib/format";
+import { productImage } from "@/lib/images";
+import { History } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,8 +23,18 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+type RecentItem = { slug: string; title: string; image_key: string | null; price_cents: number };
+
 function Index() {
   const { data } = useQuery({ queryKey: ["home"], queryFn: () => getHomeData() });
+  const [recent, setRecent] = useState<RecentItem[]>([]);
+  useEffect(() => {
+    try {
+      setRecent(JSON.parse(localStorage.getItem("xv_recent") ?? "[]"));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   return (
     <PageShell>
@@ -69,6 +82,37 @@ function Index() {
           </Link>
         ))}
       </div>
+
+      {/* Recently viewed */}
+      {recent.length > 0 && (
+        <section className="pt-6">
+          <h2 className="font-display text-xl tracking-wide flex items-center gap-2 mb-3 text-muted-foreground">
+            <History className="size-4" /> RECENTLY VIEWED
+          </h2>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+            {recent.map((r) => (
+              <Link
+                key={r.slug}
+                to="/p/$slug"
+                params={{ slug: r.slug }}
+                className="shrink-0 w-40 bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50"
+              >
+                <div className="aspect-[16/10] bg-secondary overflow-hidden">
+                  <img
+                    src={productImage(r.image_key)}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="p-2">
+                  <p className="text-[10px] font-bold line-clamp-1">{r.title}</p>
+                  <p className="text-[10px] font-mono text-accent">{usdtShort(r.price_cents)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Trending */}
       <section className="py-8">

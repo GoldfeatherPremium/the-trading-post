@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Zap, Clock, ShieldCheck, Star, MessageSquare, Minus, Plus } from "lucide-react";
 import { getProduct } from "@/lib/api/catalog";
 import { createOrder } from "@/lib/api/orders";
 import { startProductConversation } from "@/lib/api/chat";
+import { checkCoupon } from "@/lib/api/extras";
+import { FavoriteButton } from "@/components/product-card";
 import { useMe } from "@/hooks/use-me";
 import { PageShell } from "@/components/shell";
 import { productImage } from "@/lib/images";
@@ -24,6 +26,9 @@ function ProductPage() {
   const { me } = useMe();
   const [qty, setQty] = useState(1);
   const [buyerInfo, setBuyerInfo] = useState("");
+  const [variantId, setVariantId] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; pctOff: number } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -38,6 +43,8 @@ function ProductPage() {
           qty,
           buyerInfo: buyerInfo || undefined,
           network: "TRC20",
+          couponCode: coupon?.code,
+          variantId: variantId ?? undefined,
         },
       }),
     onSuccess: (r) => navigate({ to: "/pay/$orderId", params: { orderId: r.orderId } }),
@@ -48,6 +55,50 @@ function ProductPage() {
     onSuccess: (r) => navigate({ to: "/chat", search: { c: r.conversationId } }),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const applyCoupon = useMutation({
+    mutationFn: () =>
+      checkCoupon({
+        data: { code: couponInput, totalUsdt: ((data!.product!.price_cents ?? 0) * qty) / 100 },
+      }),
+    onSuccess: (r) => {
+      setCoupon(r);
+      toast.success(`Coupon applied: ${r.pctOff}% off`);
+    },
+    onError: (e: Error) => {
+      setCoupon(null);
+      toast.error(e.message);
+    },
+  });
+
+  // recently viewed (client-side, shown on the homepage)
+  const slug2 = data?.product?.slug;
+  useEffect(() => {
+    const prod = data?.product;
+    if (!prod) return;
+    try {
+      const key = "xv_recent";
+      const prev: Array<{
+        slug: string;
+        title: string;
+        image_key: string | null;
+        price_cents: number;
+      }> = JSON.parse(localStorage.getItem(key) ?? "[]");
+      const next = [
+        {
+          slug: prod.slug,
+          title: prod.title,
+          image_key: prod.image_key,
+          price_cents: prod.price_cents,
+        },
+        ...prev.filter((x) => x.slug !== prod.slug),
+      ].slice(0, 8);
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      /* private mode */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug2]);
 
   if (isLoading)
     return (
@@ -73,7 +124,12 @@ function ProductPage() {
     else fn();
   };
   const outOfStock = p.delivery_type === "auto" && p.stock_count === 0;
-  const total = p.price_cents * qty;
+  const variants = data.variants ?? [];
+  const selectedVariant = variants.find((v) => v.id === variantId);
+  const unitPrice = selectedVariant?.price_cents ?? p.price_cents;
+  const grossTotal = unitPrice * qty;
+  const discount = coupon ? Math.round((grossTotal * coupon.pctOff) / 100) : 0;
+  const total = grossTotal - discount;
 
   return (
     <PageShell>
@@ -106,7 +162,10 @@ function ProductPage() {
                 </span>
               )}
             </div>
-            <h1 className="font-display text-3xl leading-tight">{p.title}</h1>
+            <div className="flex items-start gap-2">
+              <h1 className="font-display text-3xl leading-tight flex-1">{p.title}</h1>
+              <FavoriteButton productId={p.id} className="bg-secondary" />
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               {p.sold_count} sold · {p.views} views
             </p>
@@ -169,7 +228,7 @@ function ProductPage() {
         <div className="space-y-4 lg:sticky lg:top-20 self-start">
           <div className="bg-card border border-border rounded-lg p-4 space-y-4">
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-mono text-accent">{usdtShort(p.price_cents)}</span>
+              <span className="text-2xl font-mono text-accent">{usdtShort(unitPrice)}</span>
               <span
                 className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 ${
                   p.delivery_type === "auto"
@@ -198,9 +257,37 @@ function ProductPage() {
               )}
               <p>
                 Warranty: <b className="text-foreground">{p.warranty_hours}h</b> after confirmation
+                {p.insurance_days > 0 && (
+                  <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent">
+                    🛡 +{p.insurance_days}d INSURANCE
+                  </span>
+                )}
               </p>
             </div>
 
+            {variants.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground">
+                  SELECT OPTION
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {variants.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setVariantId(variantId === v.id ? null : v.id)}
+                      className={`px-3 py-2 rounded-md text-xs font-bold border ${
+                        variantId === v.id
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border bg-secondary hover:bg-border"
+                      }`}
+                    >
+                      {v.title} · {usdtShort(v.price_cents)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Qty</span>
               <div className="flex items-center gap-2 bg-secondary rounded-md p-1">
@@ -243,6 +330,29 @@ function ProductPage() {
               </div>
             )}
 
+            <div className="flex gap-2">
+              <input
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                placeholder="Coupon code"
+                className="flex-1 bg-secondary border border-border rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="text-xs"
+                disabled={!couponInput.trim() || applyCoupon.isPending}
+                onClick={() => requireAuth(() => applyCoupon.mutate())}
+              >
+                Apply
+              </Button>
+            </div>
+            {coupon && (
+              <p className="text-[11px] text-accent font-bold">
+                ✓ {coupon.code}: −{coupon.pctOff}% ({usdt(discount)} off)
+              </p>
+            )}
             <Button
               className="w-full font-bold tracking-wide"
               disabled={outOfStock || buy.isPending}

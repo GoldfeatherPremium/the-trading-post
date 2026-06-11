@@ -74,6 +74,15 @@ export const getMyApplication = createServerFn({ method: "GET" }).handler(async 
 // ---------------------------------------------------------------------------
 const productInput = z.object({
   categoryId: z.string(),
+  variants: z
+    .array(
+      z.object({ title: z.string().min(1).max(60), priceUsdt: z.number().min(0.5).max(100_000) }),
+    )
+    .max(20)
+    .default([]),
+  expiresInDays: z.number().int().min(0).max(90).default(0),
+  insuranceDays: z.number().int().min(0).max(30).default(0),
+  itemId: z.string().optional(),
   title: z.string().min(8).max(120),
   description: z.string().min(30).max(5000),
   imageKey: z.string().max(40).optional(),
@@ -105,6 +114,20 @@ export const saveProduct = createServerFn({ method: "POST" })
       data.categoryId,
     ]);
     if (!cat) fail("Invalid category.");
+    let itemId: string | null = null;
+    if (data.itemId) {
+      const item = await q1(`select id from catalog_items where id = ? and is_active = 1`, [
+        data.itemId,
+      ]);
+      if (!item) fail("Invalid selling item.");
+      const allowed = await q<{ category_id: string }>(
+        `select category_id from catalog_item_categories where item_id = ?`,
+        [data.itemId],
+      );
+      if (allowed.length > 0 && !allowed.some((a) => a.category_id === data.categoryId))
+        fail("That sub-category is not enabled for this selling item.");
+      itemId = data.itemId;
+    }
 
     if (data.productId) {
       const p = await q1<{ seller_id: string; delivery_type: string }>(
@@ -114,12 +137,13 @@ export const saveProduct = createServerFn({ method: "POST" })
       if (!p || p.seller_id !== user.id) fail("Product not found.");
       // edits go back through review
       await run(
-        `update products set category_id = ?, title = ?, description = ?, image_key = ?, delivery_sla_minutes = ?,
+        `update products set category_id = ?, item_id = ?, title = ?, description = ?, image_key = ?, delivery_sla_minutes = ?,
            warranty_hours = ?, price_cents = ?, min_qty = ?, max_qty = ?, region = ?, platform = ?, required_info = ?,
            status = 'pending_review', reject_reason = null
          where id = ?`,
         [
           data.categoryId,
+          itemId,
           data.title,
           data.description,
           data.imageKey ?? null,
@@ -134,6 +158,19 @@ export const saveProduct = createServerFn({ method: "POST" })
           data.productId,
         ],
       );
+      await run(`update products set expires_at = ?, insurance_days = ? where id = ?`, [
+        data.expiresInDays > 0 ? now() + data.expiresInDays * 86_400_000 : null,
+        data.insuranceDays,
+        data.productId,
+      ]);
+      await run(`delete from product_variants where product_id = ?`, [data.productId]);
+      for (let i = 0; i < data.variants.length; i++) {
+        const v = data.variants[i];
+        await run(
+          `insert into product_variants (id, product_id, title, price_cents, sort) values (?,?,?,?,?)`,
+          [uid(), data.productId, v.title, Math.round(v.priceUsdt * 100), i],
+        );
+      }
       await audit(user.id, "product.update", "product", data.productId);
       return { productId: data.productId };
     }
@@ -148,14 +185,15 @@ export const saveProduct = createServerFn({ method: "POST" })
 
     const id = uid();
     await run(
-      `insert into products (id, seller_id, category_id, title, slug, description, image_key, delivery_type,
+      `insert into products (id, seller_id, category_id, item_id, title, slug, description, image_key, delivery_type,
          delivery_sla_minutes, warranty_hours, price_cents, min_qty, max_qty, region, platform, required_info,
          status, created_at)
-       values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending_review', ?)`,
+       values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending_review', ?)`,
       [
         id,
         user.id,
         data.categoryId,
+        itemId,
         data.title,
         slugify(data.title),
         data.description,
@@ -172,6 +210,18 @@ export const saveProduct = createServerFn({ method: "POST" })
         now(),
       ],
     );
+    await run(`update products set expires_at = ?, insurance_days = ? where id = ?`, [
+      data.expiresInDays > 0 ? now() + data.expiresInDays * 86_400_000 : null,
+      data.insuranceDays,
+      id,
+    ]);
+    for (let i = 0; i < data.variants.length; i++) {
+      const v = data.variants[i];
+      await run(
+        `insert into product_variants (id, product_id, title, price_cents, sort) values (?,?,?,?,?)`,
+        [uid(), id, v.title, Math.round(v.priceUsdt * 100), i],
+      );
+    }
     await audit(user.id, "product.create", "product", id);
     return { productId: id };
   });
@@ -332,33 +382,81 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
   await appContext();
   const user = await requireSeller();
   const t = now();
-  const sales = async (period: number) =>
-    (await q1<{ c: number; s: number }>(
+  const dayMs = 86_400_000;
+  const sales = (period: number) =>
+    q1<{ c: number; s: number }>(
       `select count(*) c, coalesce(sum(seller_net_cents),0) s from orders
        where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
       [user.id, t - period],
-    ))!;
-  const wallet = await getWallet(user.id);
-  const needsDelivery = (await q1<{ c: number }>(
-    `select count(*) c from orders where seller_id = ? and status in ('paid','delivering')`,
-    [user.id],
-  ))!.c;
-  const openDisputes = (await q1<{ c: number }>(
-    `select count(*) c from disputes dd join orders o on o.id = dd.order_id where o.seller_id = ? and dd.status != 'resolved'`,
-    [user.id],
-  ))!.c;
-  const lowStock = await q<{ id: string; title: string; stock_count: number }>(
-    `select id, title, stock_count from products where seller_id = ? and delivery_type = 'auto'
-     and status in ('active','out_of_stock') and stock_count <= 5 order by stock_count`,
-    [user.id],
-  );
-  return {
-    today: await sales(86_400_000),
-    week: await sales(7 * 86_400_000),
-    month: await sales(30 * 86_400_000),
+    );
+  const [
+    today,
+    week,
+    month,
     wallet,
     needsDelivery,
     openDisputes,
+    lowStock,
+    paidOrders,
+    topProducts,
+  ] = await Promise.all([
+    sales(dayMs),
+    sales(7 * dayMs),
+    sales(30 * dayMs),
+    getWallet(user.id),
+    q1<{ c: number }>(
+      `select count(*) c from orders where seller_id = ? and status in ('paid','delivering')`,
+      [user.id],
+    ),
+    q1<{ c: number }>(
+      `select count(*) c from disputes dd join orders o on o.id = dd.order_id where o.seller_id = ? and dd.status != 'resolved'`,
+      [user.id],
+    ),
+    q<{ id: string; title: string; stock_count: number }>(
+      `select id, title, stock_count from products where seller_id = ? and delivery_type = 'auto'
+       and status in ('active','out_of_stock') and stock_count <= 5 order by stock_count`,
+      [user.id],
+    ),
+    q<{ paid_at: number; seller_net_cents: number }>(
+      `select paid_at, seller_net_cents from orders
+       where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
+      [user.id, t - 13 * dayMs],
+    ),
+    q<{
+      id: string;
+      title: string;
+      views: number;
+      sold_count: number;
+      price_cents: number;
+      stock_count: number;
+      status: string;
+      delivery_type: string;
+    }>(
+      `select id, title, views, sold_count, price_cents, stock_count, status, delivery_type
+         from products where seller_id = ? and status in ('active','out_of_stock','paused')
+         order by sold_count desc limit 6`,
+      [user.id],
+    ),
+  ]);
+  const daily: Array<{ day: string; sales: number; orders: number }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(t - i * dayMs);
+    daily.push({ day: `${d.getMonth() + 1}/${d.getDate()}`, sales: 0, orders: 0 });
+  }
+  for (const o of paidOrders) {
+    const idx = 13 - Math.min(13, Math.max(0, Math.floor((t - o.paid_at) / dayMs)));
+    daily[idx].sales += o.seller_net_cents / 100;
+    daily[idx].orders += 1;
+  }
+  return {
+    daily,
+    topProducts,
+    today: today!,
+    week: week!,
+    month: month!,
+    wallet,
+    needsDelivery: needsDelivery!.c,
+    openDisputes: openDisputes!.c,
     lowStock,
     profile: {
       level: user.seller_level,
@@ -373,31 +471,33 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
 export const getWalletData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
   const user = await requireUser();
-  const wallet = await getWallet(user.id);
-  const ledger = await q<{
-    id: number;
-    order_id: string | null;
-    type: string;
-    amount_cents: number;
-    balance_after_cents: number;
-    note: string | null;
-    created_at: number;
-  }>(`select * from wallet_ledger where user_id = ? order by id desc limit 200`, [user.id]);
-  const withdrawals = await q<{
-    id: string;
-    amount_cents: number;
-    fee_cents: number;
-    address: string;
-    network: string;
-    status: string;
-    tx_hash: string | null;
-    created_at: number;
-  }>(`select * from withdrawals where user_id = ? order by created_at desc limit 50`, [user.id]);
-  const settings = await getSettings();
-  const app = await q1<{ usdt_payout_address: string; usdt_network: string }>(
-    `select usdt_payout_address, usdt_network from seller_applications where user_id = ? and status = 'approved' order by created_at desc limit 1`,
-    [user.id],
-  );
+  const [wallet, ledger, withdrawals, settings, app] = await Promise.all([
+    getWallet(user.id),
+    q<{
+      id: number;
+      order_id: string | null;
+      type: string;
+      amount_cents: number;
+      balance_after_cents: number;
+      note: string | null;
+      created_at: number;
+    }>(`select * from wallet_ledger where user_id = ? order by id desc limit 200`, [user.id]),
+    q<{
+      id: string;
+      amount_cents: number;
+      fee_cents: number;
+      address: string;
+      network: string;
+      status: string;
+      tx_hash: string | null;
+      created_at: number;
+    }>(`select * from withdrawals where user_id = ? order by created_at desc limit 50`, [user.id]),
+    getSettings(),
+    q1<{ usdt_payout_address: string; usdt_network: string }>(
+      `select usdt_payout_address, usdt_network from seller_applications where user_id = ? and status = 'approved' order by created_at desc limit 1`,
+      [user.id],
+    ),
+  ]);
   return {
     wallet,
     ledger,
@@ -488,5 +588,28 @@ export const replyToReview = createServerFn({ method: "POST" })
     ]);
     if (!r || r.seller_id !== user.id) fail("Review not found.");
     await run(`update reviews set seller_reply = ? where id = ?`, [data.reply, data.reviewId]);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// "Can't find it?" — sellers suggest new catalog items for admins to add
+// ---------------------------------------------------------------------------
+export const suggestItem = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({ name: z.string().min(2).max(80), note: z.string().max(500).optional() }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireUser();
+    const recent = (await q1<{ c: number }>(
+      `select count(*) c from item_suggestions where user_id = ? and created_at > ?`,
+      [user.id, now() - 86_400_000],
+    ))!.c;
+    if (recent >= 5) fail("You can submit up to 5 suggestions per day.");
+    await run(
+      `insert into item_suggestions (id, user_id, name, note, created_at) values (?,?,?,?,?)`,
+      [uid(), user.id, data.name.trim(), data.note ?? null, now()],
+    );
+    await audit(user.id, "item_suggestion.create", "item_suggestion", data.name);
     return { ok: true };
   });

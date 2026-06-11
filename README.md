@@ -99,6 +99,13 @@ awaiting_payment → paid → delivered → completed (warranty) → released
   deposits monitor + manual balance adjustments), user management (ban, wallet
   freeze, roles, seller levels), chat moderation, category editor, platform settings
   (fees, windows, maintenance mode), full audit log.
+- **Buyer experience extras**: favorites/wishlist with ♥ on every card, recently-viewed
+  strip on the homepage, coupon codes at checkout, and one-click **pay with wallet
+  balance** (refunds become instantly spendable).
+- **Coupons**: admin-managed percentage discounts with min-order, usage caps and
+  expiry; promoted via the admin-configurable site announcement banner.
+- **Analytics**: 14-day net-sales chart on the seller dashboard and 14-day GMV chart
+  on the admin dashboard.
 - **Security**: scrypt password hashing, httpOnly session cookies, role-based
   authorization on every server function, stock ciphertext never sent to clients,
   velocity limits (unpaid orders, disputes/month, messages/min), audited staff actions.

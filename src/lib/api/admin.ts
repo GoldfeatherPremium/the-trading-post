@@ -27,44 +27,68 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
   await appContext();
   await requireStaff();
   const t = now();
-  const gmv = async (since: number) =>
-    (await q1<{ s: number; c: number }>(
+  const dayMs = 86_400_000;
+  const gmv = (since: number) =>
+    q1<{ s: number; c: number }>(
       `select coalesce(sum(total_cents),0) s, count(*) c from orders where paid_at > ? and status not in ('cancelled','expired')`,
       [since],
-    ))!;
-  const revenue = (await q1<{ s: number }>(
-    `select coalesce(sum(commission_cents),0) s from orders where status = 'released'`,
-  ))!.s;
-  const ordersByStatus = await q<{ status: string; c: number }>(
-    `select status, count(*) c from orders group by status`,
-  );
-  const pending = {
-    sellerApplications: await count(
-      `select count(*) c from seller_applications where status = 'pending'`,
-    ),
-    productReviews: await count(`select count(*) c from products where status = 'pending_review'`),
-    openDisputes: await count(`select count(*) c from disputes where status != 'resolved'`),
-    withdrawals: await count(`select count(*) c from withdrawals where status = 'pending'`),
-    flaggedMessages: await count(
-      `select count(*) c from messages where is_flagged = 1 and moderated_at is null`,
-    ),
-  };
-  const escrowHeld = (await q1<{ s: number }>(
-    `select coalesce(sum(pending_cents),0) s from wallets`,
-  ))!.s;
-  const users = await count(`select count(*) c from users`);
-  const topSellers = await q<{ username: string; c: number; s: number }>(
-    `select u.username, count(*) c, coalesce(sum(o.total_cents),0) s from orders o join users u on u.id = o.seller_id
-     where o.paid_at > ? group by o.seller_id, u.username order by s desc limit 5`,
-    [t - 30 * 86_400_000],
-  );
-  return {
-    gmvToday: await gmv(t - 86_400_000),
-    gmv30d: await gmv(t - 30 * 86_400_000),
-    revenue,
+    );
+  const [
+    gmvToday,
+    gmv30d,
+    revenueRow,
     ordersByStatus,
-    pending,
-    escrowHeld,
+    sellerApplications,
+    productReviews,
+    openDisputes,
+    withdrawals,
+    flaggedMessages,
+    escrowRow,
+    users,
+    topSellers,
+    paidOrders,
+  ] = await Promise.all([
+    gmv(t - dayMs),
+    gmv(t - 30 * dayMs),
+    q1<{ s: number }>(
+      `select coalesce(sum(commission_cents),0) s from orders where status = 'released'`,
+    ),
+    q<{ status: string; c: number }>(`select status, count(*) c from orders group by status`),
+    count(`select count(*) c from seller_applications where status = 'pending'`),
+    count(`select count(*) c from products where status = 'pending_review'`),
+    count(`select count(*) c from disputes where status != 'resolved'`),
+    count(`select count(*) c from withdrawals where status = 'pending'`),
+    count(`select count(*) c from messages where is_flagged = 1 and moderated_at is null`),
+    q1<{ s: number }>(`select coalesce(sum(pending_cents),0) s from wallets`),
+    count(`select count(*) c from users`),
+    q<{ username: string; c: number; s: number }>(
+      `select u.username, count(*) c, coalesce(sum(o.total_cents),0) s from orders o join users u on u.id = o.seller_id
+       where o.paid_at > ? group by o.seller_id, u.username order by s desc limit 5`,
+      [t - 30 * dayMs],
+    ),
+    q<{ paid_at: number; total_cents: number }>(
+      `select paid_at, total_cents from orders where paid_at > ? and status not in ('cancelled','expired')`,
+      [t - 13 * dayMs],
+    ),
+  ]);
+  const daily: Array<{ day: string; gmv: number; orders: number }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(t - i * dayMs);
+    daily.push({ day: `${d.getMonth() + 1}/${d.getDate()}`, gmv: 0, orders: 0 });
+  }
+  for (const o of paidOrders) {
+    const idx = 13 - Math.min(13, Math.max(0, Math.floor((t - o.paid_at) / dayMs)));
+    daily[idx].gmv += o.total_cents / 100;
+    daily[idx].orders += 1;
+  }
+  return {
+    daily,
+    gmvToday: gmvToday!,
+    gmv30d: gmv30d!,
+    revenue: revenueRow!.s,
+    ordersByStatus,
+    pending: { sellerApplications, productReviews, openDisputes, withdrawals, flaggedMessages },
+    escrowHeld: escrowRow!.s,
     users,
     topSellers,
   };
@@ -612,6 +636,7 @@ export const updateAdminSettings = createServerFn({ method: "POST" })
       autoConfirmHours: z.number().int().min(1).max(720),
       paymentWindowMinutes: z.number().int().min(5).max(1440),
       maintenanceMode: z.boolean(),
+      announcement: z.string().max(300).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -619,7 +644,7 @@ export const updateAdminSettings = createServerFn({ method: "POST" })
     const staff = await requireAdmin();
     await run(
       `update site_settings set default_commission_pct = ?, withdrawal_fee_cents = ?, min_withdrawal_cents = ?,
-         auto_confirm_hours = ?, payment_window_minutes = ?, maintenance_mode = ? where id = 1`,
+         auto_confirm_hours = ?, payment_window_minutes = ?, maintenance_mode = ?, announcement = ? where id = 1`,
       [
         data.defaultCommissionPct,
         Math.round(data.withdrawalFeeUsdt * 100),
@@ -627,6 +652,7 @@ export const updateAdminSettings = createServerFn({ method: "POST" })
         data.autoConfirmHours,
         data.paymentWindowMinutes,
         data.maintenanceMode ? 1 : 0,
+        data.announcement?.trim() || null,
       ],
     );
     await audit(staff.id, "settings.update", "site_settings", "1", data);
@@ -671,5 +697,192 @@ export const moderateMessage = createServerFn({ method: "POST" })
       );
     }
     await audit(staff.id, `message.${data.action}`, "message", data.messageId);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Coupons
+// ---------------------------------------------------------------------------
+export const adminListCoupons = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  await requireStaff();
+  const coupons = await q<Row>(`select * from coupons order by created_at desc limit 200`);
+  return { coupons };
+});
+
+export const adminSaveCoupon = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      couponId: z.string().optional(),
+      code: z
+        .string()
+        .min(2)
+        .max(40)
+        .regex(/^[A-Za-z0-9_-]+$/),
+      pctOff: z.number().min(1).max(100),
+      minTotalUsdt: z.number().min(0).max(100_000).default(0),
+      maxUses: z.number().int().min(0).max(1_000_000).default(0),
+      expiresInDays: z.number().int().min(0).max(365).default(0),
+      isActive: z.boolean().default(true),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const expiresAt = data.expiresInDays > 0 ? now() + data.expiresInDays * 86_400_000 : null;
+    if (data.couponId) {
+      await run(
+        `update coupons set code = ?, pct_off = ?, min_total_cents = ?, max_uses = ?, expires_at = ?, is_active = ? where id = ?`,
+        [
+          data.code.toUpperCase(),
+          data.pctOff,
+          Math.round(data.minTotalUsdt * 100),
+          data.maxUses,
+          expiresAt,
+          data.isActive ? 1 : 0,
+          data.couponId,
+        ],
+      );
+    } else {
+      if (await q1(`select 1 as x from coupons where lower(code) = lower(?)`, [data.code]))
+        fail("A coupon with that code already exists.");
+      await run(
+        `insert into coupons (id, code, pct_off, min_total_cents, max_uses, expires_at, is_active, created_at)
+         values (?,?,?,?,?,?,?,?)`,
+        [
+          uid(),
+          data.code.toUpperCase(),
+          data.pctOff,
+          Math.round(data.minTotalUsdt * 100),
+          data.maxUses,
+          expiresAt,
+          data.isActive ? 1 : 0,
+          now(),
+        ],
+      );
+    }
+    await audit(staff.id, "coupon.save", "coupon", data.couponId ?? data.code);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Catalog items (games / brands / services) + seller suggestions
+// ---------------------------------------------------------------------------
+export const adminListItems = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  await requireStaff();
+  const [items, maps, suggestions] = await Promise.all([
+    q<{
+      id: string;
+      name: string;
+      slug: string;
+      is_active: number;
+      sort: number;
+      created_at: number;
+    }>(`select * from catalog_items order by sort, name`),
+    q<{ item_id: string; category_id: string }>(
+      `select item_id, category_id from catalog_item_categories`,
+    ),
+    q<Row>(
+      `select s.*, u.username from item_suggestions s join users u on u.id = s.user_id
+       order by case s.status when 'pending' then 0 else 1 end, s.created_at desc limit 100`,
+    ),
+  ]);
+  const byItem: Record<string, string[]> = {};
+  for (const m of maps) (byItem[m.item_id] ??= []).push(m.category_id);
+  return {
+    items: items.map((i) => ({ ...i, categoryIds: byItem[i.id] ?? [] })),
+    suggestions,
+  };
+});
+
+export const adminSaveItem = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      itemId: z.string().optional(),
+      name: z.string().min(2).max(80),
+      isActive: z.boolean().default(true),
+      categoryIds: z.array(z.string()).default([]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const slug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    let id = data.itemId;
+    if (id) {
+      await run(`update catalog_items set name = ?, is_active = ? where id = ?`, [
+        data.name,
+        data.isActive ? 1 : 0,
+        id,
+      ]);
+      await run(`delete from catalog_item_categories where item_id = ?`, [id]);
+    } else {
+      if (await q1(`select 1 as x from catalog_items where slug = ?`, [slug]))
+        fail("An item with that name already exists.");
+      id = uid();
+      await run(
+        `insert into catalog_items (id, name, slug, is_active, sort, created_at)
+         values (?,?,?,?, (select coalesce(max(sort),0)+1 from catalog_items), ?)`,
+        [id, data.name, slug, data.isActive ? 1 : 0, now()],
+      );
+    }
+    for (const catId of data.categoryIds) {
+      await run(
+        `insert into catalog_item_categories (item_id, category_id) values (?,?) on conflict (item_id, category_id) do nothing`,
+        [id!, catId],
+      );
+    }
+    await audit(staff.id, "catalog_item.save", "catalog_item", id);
+    return { itemId: id };
+  });
+
+export const reviewItemSuggestion = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      suggestionId: z.string(),
+      approve: z.boolean(),
+      note: z.string().max(500).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const s = await q1<{ id: string; user_id: string; name: string; status: string }>(
+      `select * from item_suggestions where id = ?`,
+      [data.suggestionId],
+    );
+    if (!s || s.status !== "pending") fail("Suggestion not found or already reviewed.");
+    const status = data.approve ? "approved" : "rejected";
+    await run(
+      `update item_suggestions set status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = ? where id = ?`,
+      [status, data.note ?? null, staff.id, now(), data.suggestionId],
+    );
+    if (data.approve) {
+      const slug = s!.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      if (!(await q1(`select 1 as x from catalog_items where slug = ?`, [slug]))) {
+        await run(
+          `insert into catalog_items (id, name, slug, sort, created_at)
+           values (?,?,?, (select coalesce(max(sort),0)+1 from catalog_items), ?)`,
+          [uid(), s!.name, slug, now()],
+        );
+      }
+    }
+    await notify(
+      s!.user_id,
+      "item_suggestion",
+      data.approve
+        ? `"${s!.name}" was added to the catalog 🎉`
+        : `Suggestion "${s!.name}" rejected`,
+      data.note ?? (data.approve ? "You can now list products under it." : ""),
+      "/seller/new-product",
+    );
+    await audit(staff.id, `item_suggestion.${status}`, "item_suggestion", data.suggestionId);
     return { ok: true };
   });

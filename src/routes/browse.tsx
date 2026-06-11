@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { getHomeData, browseProducts } from "@/lib/api/catalog";
+import { getHomeData, browseProducts, listCatalogItems } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 
 const searchSchema = z.object({
   category: z.string().optional(),
+  item: z.string().optional(),
   q: z.string().optional(),
   delivery: z.enum(["auto", "manual"]).optional(),
   sort: z.enum(["popular", "price_asc", "price_desc", "newest", "rating"]).optional(),
@@ -25,12 +26,18 @@ function BrowsePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/browse" });
   const { data: home } = useQuery({ queryKey: ["home"], queryFn: () => getHomeData() });
+  const { data: catalog } = useQuery({
+    queryKey: ["catalogItems"],
+    queryFn: () => listCatalogItems(),
+  });
   const { data, isLoading } = useQuery({
+    placeholderData: keepPreviousData,
     queryKey: ["browse", search],
     queryFn: () =>
       browseProducts({
         data: {
           category: search.category,
+          item: search.item,
           q: search.q,
           delivery: search.delivery,
           sort: search.sort ?? "popular",
@@ -73,6 +80,18 @@ function BrowsePage() {
 
       {/* filters */}
       <div className="flex flex-wrap items-center gap-2 py-3 border-y border-border mb-4 text-xs">
+        <select
+          value={search.item ?? ""}
+          onChange={(e) => setSearch({ item: e.target.value || undefined })}
+          className="bg-secondary border border-border rounded-md px-2 py-1.5"
+        >
+          <option value="">All items</option>
+          {catalog?.items.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </select>
         <select
           value={search.sort ?? "popular"}
           onChange={(e) => setSearch({ sort: e.target.value as never })}

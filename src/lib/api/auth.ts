@@ -7,20 +7,29 @@ import { createSession, currentUser, destroySession, requireUser } from "../serv
 
 export const getMe = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
+  const settings = await q1<{ announcement: string | null; maintenance_mode: number }>(
+    `select announcement, maintenance_mode from site_settings where id = 1`,
+  );
+  const banner = {
+    announcement: settings?.announcement ?? null,
+    maintenance: !!settings?.maintenance_mode,
+  };
   const user = await currentUser();
-  if (!user) return { user: null, unreadNotifications: 0, unreadMessages: 0 };
-  const unreadNotifications = (await q1<{ c: number }>(
-    `select count(*) c from notifications where user_id = ? and read_at is null`,
-    [user.id],
-  ))!.c;
-  const unreadMessages = (await q1<{ c: number }>(
-    `select count(*) c from messages m join conversations cv on cv.id = m.conversation_id
-     where m.created_at > case when cv.buyer_id = ? then cv.buyer_last_read_at else cv.seller_last_read_at end
-       and (cv.buyer_id = ? or cv.seller_id = ?)
-       and (m.sender_id is null or m.sender_id != ?)`,
-    [user.id, user.id, user.id, user.id],
-  ))!.c;
-  return { user, unreadNotifications, unreadMessages };
+  if (!user) return { user: null, unreadNotifications: 0, unreadMessages: 0, banner };
+  const [n1, n2] = await Promise.all([
+    q1<{ c: number }>(
+      `select count(*) c from notifications where user_id = ? and read_at is null`,
+      [user.id],
+    ),
+    q1<{ c: number }>(
+      `select count(*) c from messages m join conversations cv on cv.id = m.conversation_id
+       where m.created_at > case when cv.buyer_id = ? then cv.buyer_last_read_at else cv.seller_last_read_at end
+         and (cv.buyer_id = ? or cv.seller_id = ?)
+         and (m.sender_id is null or m.sender_id != ?)`,
+      [user.id, user.id, user.id, user.id],
+    ),
+  ]);
+  return { user, unreadNotifications: n1!.c, unreadMessages: n2!.c, banner };
 });
 
 export const register = createServerFn({ method: "POST" })

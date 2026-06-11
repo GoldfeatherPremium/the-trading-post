@@ -1,8 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { listMyOrders } from "@/lib/api/orders";
 import { ORDER_STATUS_META, countdown, dateTime, usdt } from "@/lib/format";
 import { productImage } from "@/lib/images";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/seller/orders")({
   component: SellerOrders,
@@ -17,15 +21,95 @@ function SellerOrders() {
     refetchInterval: 10_000,
   });
 
-  const sorted = [...(data?.orders ?? [])].sort(
+  const [tab, setTab] = useState<"all" | "action" | "disputed" | "done">("all");
+  const [search, setSearch] = useState("");
+
+  const all = data?.orders ?? [];
+  const counts = {
+    all: all.length,
+    action: all.filter((o) => ["paid", "delivering"].includes(o.status)).length,
+    disputed: all.filter((o) => o.status === "disputed").length,
+    done: all.filter((o) => ["completed", "released"].includes(o.status)).length,
+  };
+  const filtered = all.filter((o) => {
+    if (tab === "action" && !["paid", "delivering"].includes(o.status)) return false;
+    if (tab === "disputed" && o.status !== "disputed") return false;
+    if (tab === "done" && !["completed", "released"].includes(o.status)) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      if (
+        !o.order_no.toLowerCase().includes(s) &&
+        !o.product_title.toLowerCase().includes(s) &&
+        !o.counterparty.toLowerCase().includes(s)
+      )
+        return false;
+    }
+    return true;
+  });
+  const sorted = [...filtered].sort(
     (a, b) => Number(NEEDS_ACTION.includes(b.status)) - Number(NEEDS_ACTION.includes(a.status)),
   );
 
+  const exportCsv = () => {
+    const rows = [
+      ["order_no", "product", "buyer", "qty", "total_usdt", "net_usdt", "status", "created_at"],
+      ...all.map((o) => [
+        o.order_no,
+        `"${o.product_title.replaceAll('"', '""')}"`,
+        o.counterparty,
+        o.qty,
+        (o.total_cents / 100).toFixed(2),
+        (o.seller_net_cents / 100).toFixed(2),
+        o.status,
+        new Date(o.created_at).toISOString(),
+      ]),
+    ];
+    const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   return (
     <div className="space-y-3">
-      <h1 className="font-display text-2xl">SALES ORDERS</h1>
-      {data?.orders.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">No sales yet.</p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="font-display text-2xl">SALES ORDERS</h1>
+        <Button variant="secondary" size="sm" onClick={exportCsv} disabled={all.length === 0}>
+          <Download className="size-3.5" /> Export CSV
+        </Button>
+      </div>
+      <div className="flex gap-1.5 flex-wrap items-center">
+        {(
+          [
+            ["all", "All"],
+            ["action", "Needs action"],
+            ["disputed", "Disputed"],
+            ["done", "Completed"],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+              tab === k ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-border"
+            }`}
+          >
+            {label} ({counts[k]})
+          </button>
+        ))}
+        <Input
+          placeholder="Search order / product / buyer…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-xs max-w-56 ml-auto"
+        />
+      </div>
+      {sorted.length === 0 && (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          {all.length === 0 ? "No sales yet." : "No orders match this filter."}
+        </p>
       )}
       <div className="space-y-2">
         {sorted.map((o) => {

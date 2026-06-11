@@ -1,8 +1,54 @@
 import { Link } from "@tanstack/react-router";
-import { Zap, Clock, Star } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Zap, Clock, Star, Heart } from "lucide-react";
 import type { PublicProduct } from "@/lib/api/catalog";
+import { listFavoriteIds, toggleFavorite } from "@/lib/api/extras";
+import { useMe } from "@/hooks/use-me";
 import { productImage } from "@/lib/images";
 import { usdtShort } from "@/lib/format";
+
+export function useFavorites() {
+  const { me } = useMe();
+  const qc = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["favoriteIds"],
+    queryFn: () => listFavoriteIds(),
+    enabled: !!me,
+    staleTime: 30_000,
+  });
+  const toggle = useMutation({
+    mutationFn: (productId: string) => toggleFavorite({ data: { productId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["favoriteIds"] }),
+  });
+  return { ids: new Set(data?.ids ?? []), toggle, loggedIn: !!me };
+}
+
+export function FavoriteButton({
+  productId,
+  className,
+}: {
+  productId: string;
+  className?: string;
+}) {
+  const { ids, toggle, loggedIn } = useFavorites();
+  if (!loggedIn) return null;
+  const active = ids.has(productId);
+  return (
+    <button
+      aria-label={active ? "Remove from favorites" : "Add to favorites"}
+      className={`size-7 grid place-items-center rounded-full bg-background/70 backdrop-blur hover:bg-background ${className ?? ""}`}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggle.mutate(productId);
+      }}
+    >
+      <Heart
+        className={`size-3.5 ${active ? "text-destructive fill-current" : "text-foreground/70"}`}
+      />
+    </button>
+  );
+}
 
 export function ProductCard({ product }: { product: PublicProduct }) {
   return (
@@ -32,6 +78,7 @@ export function ProductCard({ product }: { product: PublicProduct }) {
           )}
           {product.delivery_type === "auto" ? "INSTANT" : `~${product.delivery_sla_minutes}min`}
         </span>
+        <FavoriteButton productId={product.id} className="absolute bottom-2 right-2" />
         {product.delivery_type === "auto" && product.stock_count === 0 && (
           <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-destructive/90 text-white">
             OUT OF STOCK

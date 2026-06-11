@@ -38,6 +38,8 @@ export interface OrderRow {
   auto_confirm_at: number | null;
   expires_at: number | null;
   created_at: number;
+  discount_cents: number;
+  coupon_code: string | null;
 }
 
 export const getOrderRow = (id: string) => q1<OrderRow>(`select * from orders where id = ?`, [id]);
@@ -313,6 +315,13 @@ export async function sweepLifecycle(force = false): Promise<void> {
   const t = now();
   if (!force && t - lastSweep < SWEEP_INTERVAL_MS) return;
   lastSweep = t;
+
+  // 0. listing-expirer: pause listings past their expiration date
+  await run(
+    `update products set status = 'paused', reject_reason = 'Listing expired — edit & resubmit to relist'
+     where status in ('active','out_of_stock') and expires_at is not null and expires_at < ?`,
+    [t],
+  );
 
   // 1. order-expirer: unpaid orders past the payment window
   const expired = await q<{ id: string }>(
