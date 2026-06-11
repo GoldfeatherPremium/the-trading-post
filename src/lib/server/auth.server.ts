@@ -55,7 +55,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   const row = await q1<SessionUser & { expires_at: number }>(
     `select u.id, u.email, u.username, u.role, u.seller_status, u.seller_level, u.rating,
             u.rating_count, u.total_sales, u.completion_rate, u.is_banned, u.wallet_frozen,
-            u.vacation_mode, u.created_at, s.expires_at
+            u.vacation_mode, u.country, u.locale, u.preferred_currency, u.created_at, s.expires_at
      from sessions s join users u on u.id = s.user_id where s.token = ?`,
     [token],
   );
