@@ -1,13 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { getHomeData, browseProducts, listCatalogItems } from "@/lib/api/catalog";
+import {
+  getHomeData,
+  browseProducts,
+  listCatalogItems,
+  browseFacets,
+  quickSearch,
+} from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { SmartSearch } from "@/components/smart-search";
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 const searchSchema = z.object({
   category: z.string().optional(),
