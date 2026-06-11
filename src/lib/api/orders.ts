@@ -15,6 +15,7 @@ import {
   uid,
 } from "../server/core.server";
 import { isStaff, requireSeller, requireUser } from "../server/auth.server";
+import { validateCoupon } from "../server/coupons.server";
 import {
   completeOrder,
   confirmPayment,
@@ -36,6 +37,7 @@ export const createOrder = createServerFn({ method: "POST" })
       qty: z.number().int().min(1).max(1000),
       buyerInfo: z.string().max(2000).optional(),
       network: z.enum(["TRC20", "BEP20"]).default("TRC20"),
+      couponCode: z.string().max(40).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -105,15 +107,25 @@ export const createOrder = createServerFn({ method: "POST" })
           [p!.id, p!.id],
         );
       }
-      const total = p!.price_cents * data.qty;
+      const grossTotal = p!.price_cents * data.qty;
+      let discount = 0;
+      let couponCode: string | null = null;
+      if (data.couponCode?.trim()) {
+        const coupon = await validateCoupon(data.couponCode, grossTotal);
+        discount = Math.round((grossTotal * coupon.pct_off) / 100);
+        couponCode = coupon.code;
+        await run(`update coupons set used_count = used_count + 1 where id = ?`, [coupon.id]);
+      }
+      const total = grossTotal - discount;
       const commissionPct = p!.cat_commission;
       const commission = Math.round((total * commissionPct) / 100);
       const expiresAt = t + settings.payment_window_minutes * 60_000;
       await run(
         `insert into orders (id, order_no, buyer_id, seller_id, product_id, product_title, image_key, qty,
           unit_price_cents, total_cents, commission_pct, commission_cents, seller_net_cents, status,
-          delivery_type, delivery_sla_minutes, warranty_hours, buyer_info, expires_at, created_at)
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?, 'awaiting_payment', ?,?,?,?,?,?)`,
+          delivery_type, delivery_sla_minutes, warranty_hours, buyer_info, expires_at, created_at,
+          discount_cents, coupon_code)
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?, 'awaiting_payment', ?,?,?,?,?,?,?,?)`,
         [
           orderId,
           makeOrderNo(),
@@ -134,6 +146,8 @@ export const createOrder = createServerFn({ method: "POST" })
           data.buyerInfo ?? null,
           expiresAt,
           t,
+          discount,
+          couponCode,
         ],
       );
       await run(

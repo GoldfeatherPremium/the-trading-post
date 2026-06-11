@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getSellerOverview } from "@/lib/api/seller";
 import { usdt } from "@/lib/format";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export const Route = createFileRoute("/seller/")({
   component: SellerOverview,
@@ -31,6 +32,50 @@ function SellerOverview() {
             <p className="font-mono text-sm mt-1">{x.v}</p>
           </div>
         ))}
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-4">
+        <h2 className="text-xs font-bold tracking-widest text-muted-foreground mb-3">
+          NET SALES — LAST 14 DAYS
+        </h2>
+        <div className="h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data.daily} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <defs>
+                <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 10, fill: "#71717a" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis tick={{ fontSize: 10, fill: "#71717a" }} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  background: "#18181b",
+                  border: "1px solid #27272a",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(v: number, name: string) => [
+                  name === "sales" ? `${v.toFixed(2)} USDT` : v,
+                  name,
+                ]}
+              />
+              <Area
+                type="monotone"
+                dataKey="sales"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                fill="url(#salesFill)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">

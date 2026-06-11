@@ -352,7 +352,24 @@ export const getSellerOverview = createServerFn({ method: "GET" }).handler(async
      and status in ('active','out_of_stock') and stock_count <= 5 order by stock_count`,
     [user.id],
   );
+  const dayMs = 86_400_000;
+  const paidOrders = await q<{ paid_at: number; seller_net_cents: number }>(
+    `select paid_at, seller_net_cents from orders
+     where seller_id = ? and paid_at > ? and status not in ('refunded','cancelled','expired')`,
+    [user.id, t - 13 * dayMs],
+  );
+  const daily: Array<{ day: string; sales: number; orders: number }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(t - i * dayMs);
+    daily.push({ day: `${d.getMonth() + 1}/${d.getDate()}`, sales: 0, orders: 0 });
+  }
+  for (const o of paidOrders) {
+    const idx = 13 - Math.min(13, Math.max(0, Math.floor((t - o.paid_at) / dayMs)));
+    daily[idx].sales += o.seller_net_cents / 100;
+    daily[idx].orders += 1;
+  }
   return {
+    daily,
     today: await sales(86_400_000),
     week: await sales(7 * 86_400_000),
     month: await sales(30 * 86_400_000),

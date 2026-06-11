@@ -58,7 +58,26 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
      where o.paid_at > ? group by o.seller_id, u.username order by s desc limit 5`,
     [t - 30 * 86_400_000],
   );
+  // last 14 days of paid GMV for the dashboard chart
+  const dayMs = 86_400_000;
+  const since = t - 13 * dayMs;
+  const paidOrders = await q<{ paid_at: number; total_cents: number }>(
+    `select paid_at, total_cents from orders where paid_at > ? and status not in ('cancelled','expired')`,
+    [since],
+  );
+  const daily: Array<{ day: string; gmv: number; orders: number }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const dayStart = t - i * dayMs;
+    const d = new Date(dayStart);
+    daily.push({ day: `${d.getMonth() + 1}/${d.getDate()}`, gmv: 0, orders: 0 });
+  }
+  for (const o of paidOrders) {
+    const idx = 13 - Math.min(13, Math.max(0, Math.floor((t - o.paid_at) / dayMs)));
+    daily[idx].gmv += o.total_cents / 100;
+    daily[idx].orders += 1;
+  }
   return {
+    daily,
     gmvToday: await gmv(t - 86_400_000),
     gmv30d: await gmv(t - 30 * 86_400_000),
     revenue,
@@ -612,6 +631,7 @@ export const updateAdminSettings = createServerFn({ method: "POST" })
       autoConfirmHours: z.number().int().min(1).max(720),
       paymentWindowMinutes: z.number().int().min(5).max(1440),
       maintenanceMode: z.boolean(),
+      announcement: z.string().max(300).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -619,7 +639,7 @@ export const updateAdminSettings = createServerFn({ method: "POST" })
     const staff = await requireAdmin();
     await run(
       `update site_settings set default_commission_pct = ?, withdrawal_fee_cents = ?, min_withdrawal_cents = ?,
-         auto_confirm_hours = ?, payment_window_minutes = ?, maintenance_mode = ? where id = 1`,
+         auto_confirm_hours = ?, payment_window_minutes = ?, maintenance_mode = ?, announcement = ? where id = 1`,
       [
         data.defaultCommissionPct,
         Math.round(data.withdrawalFeeUsdt * 100),
@@ -627,6 +647,7 @@ export const updateAdminSettings = createServerFn({ method: "POST" })
         data.autoConfirmHours,
         data.paymentWindowMinutes,
         data.maintenanceMode ? 1 : 0,
+        data.announcement?.trim() || null,
       ],
     );
     await audit(staff.id, "settings.update", "site_settings", "1", data);
@@ -671,5 +692,70 @@ export const moderateMessage = createServerFn({ method: "POST" })
       );
     }
     await audit(staff.id, `message.${data.action}`, "message", data.messageId);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Coupons
+// ---------------------------------------------------------------------------
+export const adminListCoupons = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  await requireStaff();
+  const coupons = await q<Row>(`select * from coupons order by created_at desc limit 200`);
+  return { coupons };
+});
+
+export const adminSaveCoupon = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      couponId: z.string().optional(),
+      code: z
+        .string()
+        .min(2)
+        .max(40)
+        .regex(/^[A-Za-z0-9_-]+$/),
+      pctOff: z.number().min(1).max(100),
+      minTotalUsdt: z.number().min(0).max(100_000).default(0),
+      maxUses: z.number().int().min(0).max(1_000_000).default(0),
+      expiresInDays: z.number().int().min(0).max(365).default(0),
+      isActive: z.boolean().default(true),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const staff = await requireAdmin();
+    const expiresAt = data.expiresInDays > 0 ? now() + data.expiresInDays * 86_400_000 : null;
+    if (data.couponId) {
+      await run(
+        `update coupons set code = ?, pct_off = ?, min_total_cents = ?, max_uses = ?, expires_at = ?, is_active = ? where id = ?`,
+        [
+          data.code.toUpperCase(),
+          data.pctOff,
+          Math.round(data.minTotalUsdt * 100),
+          data.maxUses,
+          expiresAt,
+          data.isActive ? 1 : 0,
+          data.couponId,
+        ],
+      );
+    } else {
+      if (await q1(`select 1 as x from coupons where lower(code) = lower(?)`, [data.code]))
+        fail("A coupon with that code already exists.");
+      await run(
+        `insert into coupons (id, code, pct_off, min_total_cents, max_uses, expires_at, is_active, created_at)
+         values (?,?,?,?,?,?,?,?)`,
+        [
+          uid(),
+          data.code.toUpperCase(),
+          data.pctOff,
+          Math.round(data.minTotalUsdt * 100),
+          data.maxUses,
+          expiresAt,
+          data.isActive ? 1 : 0,
+          now(),
+        ],
+      );
+    }
+    await audit(staff.id, "coupon.save", "coupon", data.couponId ?? data.code);
     return { ok: true };
   });

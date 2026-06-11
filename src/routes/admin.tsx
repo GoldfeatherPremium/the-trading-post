@@ -17,6 +17,7 @@ const NAV = [
   { to: "/admin/users", label: "Users" },
   { to: "/admin/moderation", label: "Chat mod" },
   { to: "/admin/categories", label: "Categories" },
+  { to: "/admin/coupons", label: "Coupons" },
   { to: "/admin/settings", label: "Settings" },
   { to: "/admin/audit", label: "Audit log" },
 ];

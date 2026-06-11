@@ -10,6 +10,9 @@ import {
   Wallet,
   User,
   Gavel,
+  Heart,
+  Megaphone,
+  Wrench,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useMe } from "@/hooks/use-me";
@@ -24,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function SiteHeader() {
-  const { me, unreadNotifications, unreadMessages } = useMe();
+  const { me, unreadNotifications, unreadMessages, banner } = useMe();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -39,6 +42,16 @@ export function SiteHeader() {
 
   return (
     <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border">
+      {banner.maintenance && (
+        <div className="bg-yellow-500/15 text-yellow-400 text-[11px] font-bold text-center py-1.5 px-4 flex items-center justify-center gap-1.5">
+          <Wrench className="size-3" /> Maintenance mode — orders may be briefly delayed.
+        </div>
+      )}
+      {banner.announcement && (
+        <div className="bg-primary/15 text-primary text-[11px] font-bold text-center py-1.5 px-4 flex items-center justify-center gap-1.5">
+          <Megaphone className="size-3" /> {banner.announcement}
+        </div>
+      )}
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <div className="size-8 bg-primary rounded flex items-center justify-center font-display text-xl text-primary-foreground">
@@ -108,6 +121,9 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/wallet" })}>
                     <Wallet className="size-4" /> Wallet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/favorites" })}>
+                    <Heart className="size-4" /> Favorites
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/account" })}>
                     <User className="size-4" /> Account

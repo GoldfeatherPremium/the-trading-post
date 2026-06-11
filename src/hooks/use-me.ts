@@ -12,6 +12,7 @@ export function useMe() {
     me: q.data?.user ?? null,
     unreadNotifications: q.data?.unreadNotifications ?? 0,
     unreadMessages: q.data?.unreadMessages ?? 0,
+    banner: q.data?.banner ?? { announcement: null, maintenance: false },
     isLoading: q.isLoading,
   };
 }

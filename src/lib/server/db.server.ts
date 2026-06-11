@@ -446,6 +446,25 @@ export function schemaSql(dialect: "sqlite" | "postgres"): string {
     maintenance_mode integer not null default 0
   );
   insert into site_settings (id) values (1) on conflict (id) do nothing;
+
+  create table if not exists favorites (
+    user_id text not null references users(id),
+    product_id text not null references products(id),
+    created_at ${big} not null,
+    primary key (user_id, product_id)
+  );
+
+  create table if not exists coupons (
+    id text primary key,
+    code text unique not null,
+    pct_off ${real} not null,
+    min_total_cents ${big} not null default 0,
+    max_uses integer not null default 0,
+    used_count integer not null default 0,
+    expires_at ${big},
+    is_active integer not null default 1,
+    created_at ${big} not null
+  );
   `;
 }
 
@@ -459,5 +478,15 @@ async function migrate(e: Engine): Promise<void> {
     }
   } else {
     await e.exec(schemaSql("sqlite"));
+  }
+  // additive columns for databases created before these features existed
+  const big = dialect === "postgres" ? "bigint" : "integer";
+  const addColumns = [
+    `alter table orders add column discount_cents ${big} not null default 0`,
+    `alter table orders add column coupon_code text`,
+    `alter table site_settings add column announcement text`,
+  ];
+  for (const stmt of addColumns) {
+    await e.exec(stmt).catch(() => {}); // already exists
   }
 }

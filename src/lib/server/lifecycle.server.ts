@@ -38,6 +38,8 @@ export interface OrderRow {
   auto_confirm_at: number | null;
   expires_at: number | null;
   created_at: number;
+  discount_cents: number;
+  coupon_code: string | null;
 }
 
 export const getOrderRow = (id: string) => q1<OrderRow>(`select * from orders where id = ?`, [id]);

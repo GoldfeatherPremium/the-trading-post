@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getAdminDashboard } from "@/lib/api/admin";
 import { ORDER_STATUS_META, usdt } from "@/lib/format";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -54,6 +55,37 @@ function AdminDashboard() {
             <p className="text-[10px] font-bold text-muted-foreground">{q.label}</p>
           </Link>
         ))}
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-4">
+        <h2 className="text-xs font-bold tracking-widest mb-3">GMV — LAST 14 DAYS</h2>
+        <div className="h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.daily} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 10, fill: "#71717a" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis tick={{ fontSize: 10, fill: "#71717a" }} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                contentStyle={{
+                  background: "#18181b",
+                  border: "1px solid #27272a",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(v: number, name: string) => [
+                  name === "gmv" ? `${v.toFixed(2)} USDT` : v,
+                  name,
+                ]}
+              />
+              <Bar dataKey="gmv" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

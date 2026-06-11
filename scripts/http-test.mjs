@@ -289,7 +289,62 @@ try {
 }
 check("buyer blocked from seller stock API", denied);
 
-// 12. admin dashboard reflects activity
+// 12. v2 features: favorites, coupons, wallet pay
+await call("buyer", "extras.ts", "toggleFavorite", "POST", { productId: autoProduct.id });
+const favs = await call("buyer", "extras.ts", "listFavoriteProducts", "GET");
+check(
+  "favorite saved and listed",
+  favs.products.some((p) => p.id === autoProduct.id),
+);
+
+await call("admin", "admin.ts", "adminSaveCoupon", "POST", {
+  code: `IT${suffix.toUpperCase()}`,
+  pctOff: 20,
+  minTotalUsdt: 0,
+  maxUses: 5,
+  expiresInDays: 7,
+  isActive: true,
+});
+const couponCheck = await call("buyer", "extras.ts", "checkCoupon", "POST", {
+  code: `IT${suffix.toUpperCase()}`,
+  totalUsdt: 100,
+});
+check("coupon validates", couponCheck.pctOff === 20);
+
+const { orderId: o3 } = await call("buyer", "orders.ts", "createOrder", "POST", {
+  productId: autoProduct.id,
+  qty: 1,
+  network: "TRC20",
+  couponCode: `IT${suffix.toUpperCase()}`,
+});
+const pay3 = await call("buyer", "orders.ts", "getPayment", "GET", { orderId: o3 });
+const expectedTotal = autoProduct.price_cents - Math.round((autoProduct.price_cents * 20) / 100);
+check("coupon discount applied to order total", pay3.deposit.amount_cents === expectedTotal, {
+  got: pay3.deposit.amount_cents,
+  expectedTotal,
+});
+
+// buyer still has wallet balance from the earlier refund? They withdrew most of it;
+// admin tops them up so they can pay from wallet.
+await call("admin", "admin.ts", "adminAdjustWallet", "POST", {
+  userId: me.user.id,
+  amountUsdt: expectedTotal / 100 + 5,
+  note: "integration test top-up",
+});
+await call("buyer", "extras.ts", "payWithWallet", "POST", { orderId: o3 });
+const o3view = await call("buyer", "orders.ts", "getOrder", "GET", { orderId: o3 });
+check(
+  "wallet payment delivered the order",
+  o3view.order.status === "delivered",
+  o3view.order.status,
+);
+const walletAfter = await call("buyer", "seller.ts", "getWalletData", "GET");
+check(
+  "wallet ledger has purchase entry",
+  walletAfter.ledger.some((l) => l.type === "purchase" && l.amount_cents === -expectedTotal),
+);
+
+// 12b. admin dashboard reflects activity
 const dash = await call("admin", "admin.ts", "getAdminDashboard", "GET");
 check("admin dashboard GMV > 0", dash.gmvToday.s > 0, dash.gmvToday);
 

@@ -13,6 +13,7 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as SellerRouteImport } from './routes/seller'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -39,6 +40,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminModerationRouteImport } from './routes/admin.moderation'
 import { Route as AdminFinanceRouteImport } from './routes/admin.finance'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
+import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
@@ -61,6 +63,11 @@ const SellRoute = SellRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavoritesRoute = FavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -193,6 +200,11 @@ const AdminDisputesRoute = AdminDisputesRouteImport.update({
   path: '/disputes',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCouponsRoute = AdminCouponsRouteImport.update({
+  id: '/coupons',
+  path: '/coupons',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -216,12 +228,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/favorites': typeof FavoritesRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
   '/wallet': typeof WalletRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/moderation': typeof AdminModerationRoute
@@ -250,11 +264,13 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/favorites': typeof FavoritesRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/wallet': typeof WalletRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/moderation': typeof AdminModerationRoute
@@ -285,12 +301,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
+  '/favorites': typeof FavoritesRoute
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
   '/wallet': typeof WalletRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/moderation': typeof AdminModerationRoute
@@ -322,12 +340,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/favorites'
     | '/notifications'
     | '/sell'
     | '/seller'
     | '/wallet'
     | '/admin/audit'
     | '/admin/categories'
+    | '/admin/coupons'
     | '/admin/disputes'
     | '/admin/finance'
     | '/admin/moderation'
@@ -356,11 +376,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/favorites'
     | '/notifications'
     | '/sell'
     | '/wallet'
     | '/admin/audit'
     | '/admin/categories'
+    | '/admin/coupons'
     | '/admin/disputes'
     | '/admin/finance'
     | '/admin/moderation'
@@ -390,12 +412,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/chat'
+    | '/favorites'
     | '/notifications'
     | '/sell'
     | '/seller'
     | '/wallet'
     | '/admin/audit'
     | '/admin/categories'
+    | '/admin/coupons'
     | '/admin/disputes'
     | '/admin/finance'
     | '/admin/moderation'
@@ -426,6 +450,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   ChatRoute: typeof ChatRoute
+  FavoritesRoute: typeof FavoritesRoute
   NotificationsRoute: typeof NotificationsRoute
   SellRoute: typeof SellRoute
   SellerRoute: typeof SellerRouteWithChildren
@@ -465,6 +490,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favorites': {
+      id: '/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof FavoritesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -649,6 +681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDisputesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/coupons': {
+      id: '/admin/coupons'
+      path: '/coupons'
+      fullPath: '/admin/coupons'
+      preLoaderRoute: typeof AdminCouponsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/categories': {
       id: '/admin/categories'
       path: '/categories'
@@ -676,6 +715,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminCouponsRoute: typeof AdminCouponsRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
   AdminFinanceRoute: typeof AdminFinanceRoute
   AdminModerationRoute: typeof AdminModerationRoute
@@ -690,6 +730,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminCouponsRoute: AdminCouponsRoute,
   AdminDisputesRoute: AdminDisputesRoute,
   AdminFinanceRoute: AdminFinanceRoute,
   AdminModerationRoute: AdminModerationRoute,
@@ -733,6 +774,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   ChatRoute: ChatRoute,
+  FavoritesRoute: FavoritesRoute,
   NotificationsRoute: NotificationsRoute,
   SellRoute: SellRoute,
   SellerRoute: SellerRouteWithChildren,

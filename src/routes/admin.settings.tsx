@@ -22,6 +22,7 @@ function AdminSettings() {
     autoConfirmHours: 48,
     paymentWindowMinutes: 30,
     maintenanceMode: false,
+    announcement: "",
   });
 
   useEffect(() => {
@@ -34,6 +35,7 @@ function AdminSettings() {
         autoConfirmHours: s.auto_confirm_hours as number,
         paymentWindowMinutes: s.payment_window_minutes as number,
         maintenanceMode: !!s.maintenance_mode,
+        announcement: (s.announcement as string) ?? "",
       });
     }
   }, [data]);
@@ -88,6 +90,18 @@ function AdminSettings() {
           {f.hint && <p className="text-[10px] text-muted-foreground">{f.hint}</p>}
         </div>
       ))}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Site announcement banner</Label>
+        <Input
+          value={form.announcement}
+          maxLength={300}
+          onChange={(e) => setForm({ ...form, announcement: e.target.value })}
+          placeholder="e.g. ⚡ Weekend sale — use coupon SAVE10 for 10% off!"
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Shown at the top of every page. Leave empty to hide.
+        </p>
+      </div>
       <div className="flex items-center justify-between bg-card border border-border rounded-lg p-3">
         <div>
           <p className="text-xs font-bold">Maintenance mode</p>

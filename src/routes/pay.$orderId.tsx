@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Copy, ShieldCheck, Timer } from "lucide-react";
 import { cancelUnpaidOrder, getPayment, simulatePaymentSent } from "@/lib/api/orders";
+import { payWithWallet } from "@/lib/api/extras";
+import { getWalletData } from "@/lib/api/seller";
 import { PageShell } from "@/components/shell";
 import { usdt, countdown } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,16 @@ function PayPage() {
     refetchInterval: 2500,
   });
 
+  const { data: walletData } = useQuery({ queryKey: ["wallet"], queryFn: () => getWalletData() });
+  const payWallet = useMutation({
+    mutationFn: () => payWithWallet({ data: { orderId } }),
+    onSuccess: () => {
+      qc.invalidateQueries();
+      toast.success("Paid from wallet balance!");
+      navigate({ to: "/orders/$orderId", params: { orderId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const paySim = useMutation({
     mutationFn: () => simulatePaymentSent({ data: { orderId } }),
     onSuccess: () => {
@@ -52,6 +64,8 @@ function PayPage() {
       navigate({ to: "/orders/$orderId", params: { orderId } });
     }
   }, [data?.order.status]);
+
+  const walletAvailable = walletData?.wallet.available_cents ?? 0;
 
   if (!data)
     return (
@@ -93,6 +107,11 @@ function PayPage() {
                 SEND EXACTLY
               </p>
               <p className="text-3xl font-mono text-accent mt-1">{usdt(deposit.amount_cents)}</p>
+              {(order.discount_cents ?? 0) > 0 && (
+                <p className="text-[10px] text-accent font-bold mt-1">
+                  coupon {order.coupon_code}: −{usdt(order.discount_cents)} applied
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground mt-1">
                 network: <b className="text-foreground">{deposit.network}</b>
               </p>
@@ -136,6 +155,18 @@ function PayPage() {
             </div>
 
             <div className="space-y-2 pt-1">
+              {walletAvailable >= deposit.amount_cents && (
+                <Button
+                  variant="secondary"
+                  className="w-full font-bold border border-accent/40 text-accent"
+                  onClick={() => payWallet.mutate()}
+                  disabled={payWallet.isPending}
+                >
+                  {payWallet.isPending
+                    ? "Paying…"
+                    : `Pay instantly from wallet (${usdt(walletAvailable)} available)`}
+                </Button>
+              )}
               <Button
                 className="w-full font-bold"
                 onClick={() => paySim.mutate()}
