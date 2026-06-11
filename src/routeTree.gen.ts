@@ -50,6 +50,7 @@ import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AccountSubscriptionsRouteImport } from './routes/account.subscriptions'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
 
 const WalletRoute = WalletRouteImport.update({
@@ -257,6 +258,11 @@ const AdminAuditRoute = AdminAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AdminRoute,
 } as any)
+const AccountSubscriptionsRoute = AccountSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AccountRoute,
+} as any)
 const SellerStockProductIdRoute = SellerStockProductIdRouteImport.update({
   id: '/stock/$productId',
   path: '/stock/$productId',
@@ -265,7 +271,7 @@ const SellerStockProductIdRoute = SellerStockProductIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
+  '/account': typeof AccountRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
   '/wallet': typeof WalletRoute
+  '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -309,7 +316,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
+  '/account': typeof AccountRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/chat': typeof ChatRoute
@@ -319,6 +326,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/sell': typeof SellRoute
   '/wallet': typeof WalletRoute
+  '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -352,7 +360,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
+  '/account': typeof AccountRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
   '/wallet': typeof WalletRoute
+  '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/seller'
     | '/wallet'
+    | '/account/subscriptions'
     | '/admin/audit'
     | '/admin/categories'
     | '/admin/coupons'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/sell'
     | '/wallet'
+    | '/account/subscriptions'
     | '/admin/audit'
     | '/admin/categories'
     | '/admin/coupons'
@@ -496,6 +507,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/seller'
     | '/wallet'
+    | '/account/subscriptions'
     | '/admin/audit'
     | '/admin/categories'
     | '/admin/coupons'
@@ -529,7 +541,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AccountRoute: typeof AccountRoute
+  AccountRoute: typeof AccountRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
@@ -837,6 +849,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/account/subscriptions': {
+      id: '/account/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/account/subscriptions'
+      preLoaderRoute: typeof AccountSubscriptionsRouteImport
+      parentRoute: typeof AccountRoute
+    }
     '/seller/stock/$productId': {
       id: '/seller/stock/$productId'
       path: '/stock/$productId'
@@ -846,6 +865,17 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AccountRouteChildren {
+  AccountSubscriptionsRoute: typeof AccountSubscriptionsRoute
+}
+
+const AccountRouteChildren: AccountRouteChildren = {
+  AccountSubscriptionsRoute: AccountSubscriptionsRoute,
+}
+
+const AccountRouteWithChildren =
+  AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
@@ -924,7 +954,7 @@ const SellerRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AccountRoute: AccountRoute,
+  AccountRoute: AccountRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
