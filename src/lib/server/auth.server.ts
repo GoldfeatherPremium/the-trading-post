@@ -33,7 +33,8 @@ export async function createSession(userId: string): Promise<void> {
   ]);
   setCookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "none",
+    secure: true,
     path: "/",
     maxAge: SESSION_TTL_MS / 1000,
   });
