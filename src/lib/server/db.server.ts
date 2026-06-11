@@ -624,4 +624,43 @@ async function migrate(e: Engine): Promise<void> {
       )`,
     )
     .catch(() => {});
+
+  // --- Phase 7: FX rates relative to site base currency ---
+  await e
+    .exec(
+      `create table if not exists fx_rates (
+        currency text primary key,
+        rate_to_base ${real} not null,
+        symbol text,
+        updated_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  // seed a sane default set if empty
+  const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
+  if (!seeded[0] || Number(seeded[0].c) === 0) {
+    const t = Date.now();
+    const seed: Array<[string, number, string]> = [
+      ["USD", 1, "$"],
+      ["EUR", 0.92, "€"],
+      ["GBP", 0.79, "£"],
+      ["BRL", 5.4, "R$"],
+      ["INR", 83.5, "₹"],
+      ["NGN", 1550, "₦"],
+      ["RUB", 92, "₽"],
+      ["IDR", 16000, "Rp"],
+      ["PHP", 57, "₱"],
+      ["TRY", 32, "₺"],
+    ];
+    for (const [c, r, s] of seed) {
+      await e
+        .run(`insert into fx_rates (currency, rate_to_base, symbol, updated_at) values (?,?,?,?)`, [
+          c,
+          r,
+          s,
+          t,
+        ])
+        .catch(() => {});
+    }
+  }
 }
