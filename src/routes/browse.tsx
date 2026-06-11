@@ -47,6 +47,8 @@ function BrowsePage() {
           delivery: search.delivery,
           sort: search.sort ?? "popular",
           inStock: search.inStock,
+          minPrice: search.minPrice,
+          maxPrice: search.maxPrice,
           page: search.page ?? 1,
         },
       }),
