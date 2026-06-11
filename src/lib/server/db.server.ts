@@ -570,6 +570,13 @@ async function migrate(e: Engine): Promise<void> {
     `alter table products add column subscription_cycle_days integer not null default 30`,
     `alter table products add column subscription_seats_total integer not null default 1`,
     `alter table products add column download_size_mb integer not null default 0`,
+    // --- Phase 7: international expansion (locale, currency, region gating) ---
+    `alter table users add column country text`,
+    `alter table users add column locale text not null default 'en'`,
+    `alter table users add column preferred_currency text not null default 'USD'`,
+    `alter table products add column allowed_countries text`,
+    `alter table products add column blocked_countries text`,
+    `alter table site_settings add column base_currency text not null default 'USD'`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists
