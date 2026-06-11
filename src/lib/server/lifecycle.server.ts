@@ -41,6 +41,10 @@ export interface OrderRow {
   created_at: number;
   discount_cents: number;
   coupon_code: string | null;
+  escrow_status: "none" | "held" | "on_hold" | "released" | "refunded";
+  escrow_hold_reason: string | null;
+  escrow_hold_by: string | null;
+  escrow_hold_at: number | null;
 }
 
 export const getOrderRow = (id: string) => q1<OrderRow>(`select * from orders where id = ?`, [id]);
