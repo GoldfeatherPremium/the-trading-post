@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { q, q1, run } from "../server/db.server";
 import { appContext } from "../server/app.server";
+import { buildSearchClause, didYouMean, tokenize } from "../server/search.server";
 
 export interface PublicSeller {
   id: string;
