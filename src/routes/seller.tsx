@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import { LayoutDashboard, Package, ListOrdered, Wallet, Star } from "lucide-react";
+import { LayoutDashboard, Package, ListOrdered, Wallet, Star, ShieldCheck } from "lucide-react";
 import { PageShell } from "@/components/shell";
 import { useMe } from "@/hooks/use-me";
 
