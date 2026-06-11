@@ -9,6 +9,7 @@ import {
   uid,
 } from "./core.server";
 import { txEscrowHold, txEscrowRelease, txRefund } from "./money.server";
+import { recomputeSellerTrust } from "./trust.server";
 
 export interface OrderRow {
   id: string;
