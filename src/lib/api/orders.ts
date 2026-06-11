@@ -15,6 +15,7 @@ import {
   uid,
 } from "../server/core.server";
 import { isStaff, requireSeller, requireUser } from "../server/auth.server";
+import { recomputeSellerTrust } from "../server/trust.server";
 import { validateCoupon } from "../server/coupons.server";
 import {
   completeOrder,
