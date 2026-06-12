@@ -8,8 +8,81 @@ import { SellerBadge } from "@/components/seller-badge";
 import { TrustSparkline } from "@/components/trust-sparkline";
 import { timeAgo } from "@/lib/format";
 
+const SITE = "https://warm-trade-space.lovable.app";
+
 export const Route = createFileRoute("/s/$username")({
-  head: ({ params }) => ({ meta: [{ title: `${params.username} — X-VAULT seller` }] }),
+  loader: async ({ params, context }) => {
+    try {
+      const data = await context.queryClient.ensureQueryData({
+        queryKey: ["sellerStore", params.username],
+        queryFn: () => getSellerStore({ data: { username: params.username } }),
+      });
+      return { seller: data?.seller ?? null };
+    } catch {
+      return { seller: null };
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const s = loaderData?.seller;
+    const url = `${SITE}/s/${params.username}`;
+    if (!s) {
+      return {
+        meta: [{ title: `${params.username} — X-VAULT seller` }],
+        links: [{ rel: "canonical", href: url }],
+      };
+    }
+    const title = `${s.username} — Trusted seller on X-VAULT`;
+    const desc = (s.store_description ||
+      `${s.username} on X-VAULT: ${s.total_sales.toLocaleString()} sales, ${s.rating > 0 ? s.rating.toFixed(1) + "★" : "new seller"}, escrow protected. Browse listings & buy with USDT.`
+    )
+      .replace(/\s+/g, " ")
+      .slice(0, 155);
+    const img = s.store_logo_url || s.store_banner_url || undefined;
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: s.username,
+      url,
+      ...(img ? { logo: img, image: img } : {}),
+      ...(s.rating_count > 0
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: s.rating.toFixed(1),
+              reviewCount: s.rating_count,
+            },
+          }
+        : {}),
+    };
+    const breadcrumbs = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: SITE },
+        { "@type": "ListItem", position: 2, name: "Sellers", item: `${SITE}/browse` },
+        { "@type": "ListItem", position: 3, name: s.username, item: url },
+      ],
+    };
+    return {
+      meta: [
+        { title },
+        { name: "description", content: desc },
+        { property: "og:type", content: "profile" },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:url", content: url },
+        ...(img ? [{ property: "og:image", content: img }] : []),
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
+        ...(img ? [{ name: "twitter:image", content: img }] : []),
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: [
+        { type: "application/ld+json", children: JSON.stringify(jsonLd) },
+        { type: "application/ld+json", children: JSON.stringify(breadcrumbs) },
+      ],
+    };
+  },
   component: SellerStorePage,
 });
 
