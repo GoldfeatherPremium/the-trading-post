@@ -192,20 +192,22 @@ async function createPostgresEngine(): Promise<Engine> {
 // Public API
 // ---------------------------------------------------------------------------
 async function schemaAlreadyMigrated(e: Engine): Promise<boolean> {
-  // Sentinel: the most recently added column (Phase 11). If present, every
-  // earlier additive column is also present, so we can skip the ~100-statement
-  // migration on Worker cold starts. The full migration still runs on a fresh
-  // database (sentinel missing) or on SQLite local dev.
+  // Sentinel: a table from the most recent migration. If present, every
+  // earlier additive column/table is also present, so we skip the
+  // ~100-statement migration on Worker cold starts. Bump the sentinel
+  // whenever you add a new column or table to migrate().
   try {
     if (isPostgres()) {
       const r = await e.q<{ c: number }>(
-        `select count(*)::int as c from information_schema.columns
-         where table_schema = 'public' and table_name = 'products' and column_name = 'sale_ends_at'`,
+        `select count(*)::int as c from information_schema.tables
+         where table_schema = 'public' and table_name = 'product_images'`,
       );
       return !!r[0] && Number(r[0].c) > 0;
     }
-    const r = await e.q<{ name: string }>(`pragma table_info(products)`);
-    return r.some((x) => x.name === "sale_ends_at");
+    const r = await e.q<{ name: string }>(
+      `select name from sqlite_master where type='table' and name='product_images'`,
+    );
+    return r.length > 0;
   } catch {
     return false;
   }
