@@ -131,7 +131,7 @@ export const getAdminPulse = createServerFn({ method: "GET" }).handler(async () 
       [since],
     ),
     q1<{ s: number; c: number }>(
-      `select coalesce(sum(total_cents),0) s, count(*) c from orders where status = 'refunded' and updated_at > ?`,
+      `select coalesce(sum(total_cents),0) s, count(*) c from orders where status = 'refunded' and coalesce(completed_at, paid_at, created_at) > ?`,
       [since],
     ),
     q1<{ c: number }>(
