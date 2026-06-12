@@ -391,6 +391,18 @@ function ProductForm() {
         <BookOpen className="size-4 text-primary" /> 4. Product details
       </h2>
 
+      <AiGenerator
+        itemName={selectedItem?.name ?? ""}
+        categoryName={selectedCat?.name ?? ""}
+        onApply={(r) =>
+          setForm((f) => ({
+            ...f,
+            title: r.title ?? f.title,
+            description: r.description ?? f.description,
+          }))
+        }
+      />
+
       <div className="space-y-1.5">
         <Label className="text-xs">Title (min. 8 chars)</Label>
         <Input
