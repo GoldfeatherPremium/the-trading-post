@@ -89,7 +89,7 @@ function StorefrontEdit() {
 
       <Field label="Banner image URL" hint="Recommended 1600 × 400">
         <input
-          className="input"
+          className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs"
           placeholder="https://…"
           value={form.bannerUrl}
           onChange={(e) => setForm({ ...form, bannerUrl: e.target.value })}
@@ -98,7 +98,7 @@ function StorefrontEdit() {
 
       <Field label="Logo / avatar URL" hint="Recommended square, 256 × 256">
         <input
-          className="input"
+          className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs"
           placeholder="https://…"
           value={form.logoUrl}
           onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
@@ -108,7 +108,7 @@ function StorefrontEdit() {
       <Field label="Store description" hint={`${form.description.length} / 1500`}>
         <textarea
           rows={4}
-          className="input"
+          className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs"
           maxLength={1500}
           placeholder="Tell buyers what you specialise in, your delivery hours, anything that builds trust."
           value={form.description}
@@ -118,7 +118,7 @@ function StorefrontEdit() {
 
       <Field label="Store announcement" hint={`${form.announcement.length} / 280 — shown as a banner at the top of your store`}>
         <input
-          className="input"
+          className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs"
           maxLength={280}
           placeholder="e.g. ⚡ Restocked all Steam keys today — instant delivery."
           value={form.announcement}
@@ -135,7 +135,7 @@ function StorefrontEdit() {
                 <Icon className="size-3.5" /> {label}
               </span>
               <input
-                className="input"
+                className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs"
                 placeholder={placeholder}
                 value={form.socials[k] ?? ""}
                 onChange={(e) =>
