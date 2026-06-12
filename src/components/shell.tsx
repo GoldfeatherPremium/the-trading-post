@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getMyLoyalty } from "@/lib/api/growth";
+import { Users, Sparkles } from "lucide-react";
 import {
   Bell,
   MessageSquare,
