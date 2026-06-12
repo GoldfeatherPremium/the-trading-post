@@ -246,17 +246,7 @@ function ProductForm() {
       </div>
 
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Description (min. 30 chars)</Label>
-          <button
-            type="button"
-            className="text-[10px] text-primary font-bold flex items-center gap-1 disabled:opacity-50"
-            disabled={polish.isPending || form.description.trim().length < 20 || form.title.trim().length < 3}
-            onClick={() => polish.mutate()}
-          >
-            <Wand2 className="size-3" /> {polish.isPending ? "Polishing…" : "Polish with AI"}
-          </button>
-        </div>
+        <Label className="text-xs">Description (min. 30 chars)</Label>
         <Textarea
           required
           minLength={30}
