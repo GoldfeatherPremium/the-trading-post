@@ -135,13 +135,18 @@ async function getPgClient(): Promise<{ sql: PgSql; oneShot: boolean }> {
   return { sql: await makePgClient(), oneShot: true };
 }
 
-/** Wrap a server handler so the postgres client is request-scoped and closed. */
+/** Wrap a server handler so the postgres client is request-scoped.
+ * We do NOT await sql.end() — closing the TCP socket can take seconds on
+ * Cloudflare Workers and would delay the response. The isolate's GC handles
+ * cleanup; postgres.js has idle_timeout/max_lifetime as a backstop. */
 export async function withDbRequest<T>(fn: () => Promise<T>): Promise<T> {
   const slot: { sql: PgSql | null } = { sql: null };
   try {
     return await pgRequestStore.run(slot, fn);
   } finally {
-    if (slot.sql) await slot.sql.end({ timeout: 1 }).catch(() => {});
+    if (slot.sql) {
+      void slot.sql.end({ timeout: 1 }).catch(() => {});
+    }
   }
 }
 
@@ -186,11 +191,31 @@ async function createPostgresEngine(): Promise<Engine> {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+async function schemaAlreadyMigrated(e: Engine): Promise<boolean> {
+  // Sentinel: the most recently added column (Phase 11). If present, every
+  // earlier additive column is also present, so we can skip the ~100-statement
+  // migration on Worker cold starts. The full migration still runs on a fresh
+  // database (sentinel missing) or on SQLite local dev.
+  try {
+    if (isPostgres()) {
+      const r = await e.q<{ c: number }>(
+        `select count(*)::int as c from information_schema.columns
+         where table_schema = 'public' and table_name = 'products' and column_name = 'sale_ends_at'`,
+      );
+      return !!r[0] && Number(r[0].c) > 0;
+    }
+    const r = await e.q<{ name: string }>(`pragma table_info(products)`);
+    return r.some((x) => x.name === "sale_ends_at");
+  } catch {
+    return false;
+  }
+}
+
 async function getEngine(): Promise<Engine> {
   if (!engine) engine = await (isPostgres() ? createPostgresEngine() : createSqliteEngine());
   if (isPostgres()) {
     if (!migratedFlag) {
-      await migrate(engine);
+      if (!(await schemaAlreadyMigrated(engine))) await migrate(engine);
       migratedFlag = true;
     }
   } else {
