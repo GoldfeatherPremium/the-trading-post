@@ -281,6 +281,7 @@ export const saveProduct = createServerFn({ method: "POST" })
         [uid(), id, v.title, Math.round(v.priceUsdt * 100), i],
       );
     }
+    await attachImagesToProduct(id, user.id, data.imageIds);
     await audit(user.id, "product.create", "product", id);
     return { productId: id };
   });
