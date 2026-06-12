@@ -35,6 +35,7 @@ import { Route as SellerReviewsRouteImport } from './routes/seller.reviews'
 import { Route as SellerPromotionsRouteImport } from './routes/seller.promotions'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
 import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
+import { Route as SellerOptimizeRouteImport } from './routes/seller.optimize'
 import { Route as SellerNewProductRouteImport } from './routes/seller.new-product'
 import { Route as SellerAnalyticsRouteImport } from './routes/seller.analytics'
 import { Route as SUsernameRouteImport } from './routes/s.$username'
@@ -193,6 +194,11 @@ const SellerProductsRoute = SellerProductsRouteImport.update({
 const SellerOrdersRoute = SellerOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerOptimizeRoute = SellerOptimizeRouteImport.update({
+  id: '/optimize',
+  path: '/optimize',
   getParentRoute: () => SellerRoute,
 } as any)
 const SellerNewProductRoute = SellerNewProductRouteImport.update({
@@ -384,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
+  '/seller/optimize': typeof SellerOptimizeRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
@@ -439,6 +446,7 @@ export interface FileRoutesByTo {
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
+  '/seller/optimize': typeof SellerOptimizeRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
@@ -497,6 +505,7 @@ export interface FileRoutesById {
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
+  '/seller/optimize': typeof SellerOptimizeRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
@@ -556,6 +565,7 @@ export interface FileRouteTypes {
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
+    | '/seller/optimize'
     | '/seller/orders'
     | '/seller/products'
     | '/seller/promotions'
@@ -611,6 +621,7 @@ export interface FileRouteTypes {
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
+    | '/seller/optimize'
     | '/seller/orders'
     | '/seller/products'
     | '/seller/promotions'
@@ -668,6 +679,7 @@ export interface FileRouteTypes {
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
+    | '/seller/optimize'
     | '/seller/orders'
     | '/seller/products'
     | '/seller/promotions'
@@ -890,6 +902,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/seller/orders'
       preLoaderRoute: typeof SellerOrdersRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/optimize': {
+      id: '/seller/optimize'
+      path: '/optimize'
+      fullPath: '/seller/optimize'
+      preLoaderRoute: typeof SellerOptimizeRouteImport
       parentRoute: typeof SellerRoute
     }
     '/seller/new-product': {
@@ -1170,6 +1189,7 @@ const DisputesRouteWithChildren = DisputesRoute._addFileChildren(
 interface SellerRouteChildren {
   SellerAnalyticsRoute: typeof SellerAnalyticsRoute
   SellerNewProductRoute: typeof SellerNewProductRoute
+  SellerOptimizeRoute: typeof SellerOptimizeRoute
   SellerOrdersRoute: typeof SellerOrdersRoute
   SellerProductsRoute: typeof SellerProductsRoute
   SellerPromotionsRoute: typeof SellerPromotionsRoute
@@ -1185,6 +1205,7 @@ interface SellerRouteChildren {
 const SellerRouteChildren: SellerRouteChildren = {
   SellerAnalyticsRoute: SellerAnalyticsRoute,
   SellerNewProductRoute: SellerNewProductRoute,
+  SellerOptimizeRoute: SellerOptimizeRoute,
   SellerOrdersRoute: SellerOrdersRoute,
   SellerProductsRoute: SellerProductsRoute,
   SellerPromotionsRoute: SellerPromotionsRoute,
