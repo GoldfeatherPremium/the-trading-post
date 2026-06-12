@@ -28,6 +28,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SellerWalletRouteImport } from './routes/seller.wallet'
 import { Route as SellerVerificationRouteImport } from './routes/seller.verification'
 import { Route as SellerSubscriptionsRouteImport } from './routes/seller.subscriptions'
+import { Route as SellerStorefrontRouteImport } from './routes/seller.storefront'
 import { Route as SellerReviewsRouteImport } from './routes/seller.reviews'
 import { Route as SellerPromotionsRouteImport } from './routes/seller.promotions'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
@@ -151,6 +152,11 @@ const SellerVerificationRoute = SellerVerificationRouteImport.update({
 const SellerSubscriptionsRoute = SellerSubscriptionsRouteImport.update({
   id: '/subscriptions',
   path: '/subscriptions',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerStorefrontRoute = SellerStorefrontRouteImport.update({
+  id: '/storefront',
+  path: '/storefront',
   getParentRoute: () => SellerRoute,
 } as any)
 const SellerReviewsRoute = SellerReviewsRouteImport.update({
@@ -340,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/storefront': typeof SellerStorefrontRoute
   '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/storefront': typeof SellerStorefrontRoute
   '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
   '/seller/reviews': typeof SellerReviewsRoute
+  '/seller/storefront': typeof SellerStorefrontRoute
   '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
   '/seller/wallet': typeof SellerWalletRoute
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
     | '/seller/products'
     | '/seller/promotions'
     | '/seller/reviews'
+    | '/seller/storefront'
     | '/seller/subscriptions'
     | '/seller/verification'
     | '/seller/wallet'
@@ -539,6 +549,7 @@ export interface FileRouteTypes {
     | '/seller/products'
     | '/seller/promotions'
     | '/seller/reviews'
+    | '/seller/storefront'
     | '/seller/subscriptions'
     | '/seller/verification'
     | '/seller/wallet'
@@ -589,6 +600,7 @@ export interface FileRouteTypes {
     | '/seller/products'
     | '/seller/promotions'
     | '/seller/reviews'
+    | '/seller/storefront'
     | '/seller/subscriptions'
     | '/seller/verification'
     | '/seller/wallet'
@@ -754,6 +766,13 @@ declare module '@tanstack/react-router' {
       path: '/subscriptions'
       fullPath: '/seller/subscriptions'
       preLoaderRoute: typeof SellerSubscriptionsRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/storefront': {
+      id: '/seller/storefront'
+      path: '/storefront'
+      fullPath: '/seller/storefront'
+      preLoaderRoute: typeof SellerStorefrontRouteImport
       parentRoute: typeof SellerRoute
     }
     '/seller/reviews': {
@@ -1032,6 +1051,7 @@ interface SellerRouteChildren {
   SellerProductsRoute: typeof SellerProductsRoute
   SellerPromotionsRoute: typeof SellerPromotionsRoute
   SellerReviewsRoute: typeof SellerReviewsRoute
+  SellerStorefrontRoute: typeof SellerStorefrontRoute
   SellerSubscriptionsRoute: typeof SellerSubscriptionsRoute
   SellerVerificationRoute: typeof SellerVerificationRoute
   SellerWalletRoute: typeof SellerWalletRoute
@@ -1046,6 +1066,7 @@ const SellerRouteChildren: SellerRouteChildren = {
   SellerProductsRoute: SellerProductsRoute,
   SellerPromotionsRoute: SellerPromotionsRoute,
   SellerReviewsRoute: SellerReviewsRoute,
+  SellerStorefrontRoute: SellerStorefrontRoute,
   SellerSubscriptionsRoute: SellerSubscriptionsRoute,
   SellerVerificationRoute: SellerVerificationRoute,
   SellerWalletRoute: SellerWalletRoute,
