@@ -186,3 +186,12 @@ export const getSellerTrust = createServerFn({ method: "POST" })
     );
     return { trust: u ?? null };
   });
+
+/** Public trust score history for a seller — powers the storefront sparkline. */
+export const getSellerTrustHistory = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ userId: z.string(), days: z.number().int().min(7).max(180).default(30) }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const points = await getTrustHistory(data.userId, data.days);
+    return { points };
+  });
