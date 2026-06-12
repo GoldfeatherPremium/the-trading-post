@@ -1,7 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMyLoyalty } from "@/lib/api/growth";
-import { Users, Sparkles } from "lucide-react";
 import {
   Bell,
   MessageSquare,
@@ -17,8 +15,11 @@ import {
   Wrench,
   Menu,
   Scale,
+  Users,
+  Sparkles,
 } from "lucide-react";
 import { type ReactNode } from "react";
+import { getMyLoyalty } from "@/lib/api/growth";
 import { useMe } from "@/hooks/use-me";
 import { logout } from "@/lib/api/auth";
 import { SmartSearch } from "@/components/smart-search";
