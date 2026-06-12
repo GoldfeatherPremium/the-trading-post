@@ -56,6 +56,7 @@ import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AccountSubscriptionsRouteImport } from './routes/account.subscriptions'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
+import { Route as ApiPublicImgIdRouteImport } from './routes/api/public/img.$id'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
@@ -292,6 +293,11 @@ const SellerStockProductIdRoute = SellerStockProductIdRouteImport.update({
   path: '/stock/$productId',
   getParentRoute: () => SellerRoute,
 } as any)
+const ApiPublicImgIdRoute = ApiPublicImgIdRouteImport.update({
+  id: '/api/public/img/$id',
+  path: '/api/public/img/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/orders/': typeof OrdersIndexRoute
   '/seller/': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersIndexRoute
   '/seller': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/orders/': typeof OrdersIndexRoute
   '/seller/': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/seller/'
     | '/seller/stock/$productId'
+    | '/api/public/img/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -536,6 +546,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/seller'
     | '/seller/stock/$productId'
+    | '/api/public/img/$id'
   id:
     | '__root__'
     | '/'
@@ -585,6 +596,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/seller/'
     | '/seller/stock/$productId'
+    | '/api/public/img/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -606,6 +618,7 @@ export interface RootRouteChildren {
   PayOrderIdRoute: typeof PayOrderIdRoute
   SUsernameRoute: typeof SUsernameRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
+  ApiPublicImgIdRoute: typeof ApiPublicImgIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -939,6 +952,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SellerStockProductIdRouteImport
       parentRoute: typeof SellerRoute
     }
+    '/api/public/img/$id': {
+      id: '/api/public/img/$id'
+      path: '/api/public/img/$id'
+      fullPath: '/api/public/img/$id'
+      preLoaderRoute: typeof ApiPublicImgIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1055,6 +1075,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayOrderIdRoute: PayOrderIdRoute,
   SUsernameRoute: SUsernameRoute,
   OrdersIndexRoute: OrdersIndexRoute,
+  ApiPublicImgIdRoute: ApiPublicImgIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
