@@ -488,6 +488,33 @@ function ProductPage() {
           </Link>
         </div>
       </div>
+
+      <RelatedProducts productId={p.id} />
     </PageShell>
   );
+}
+
+function RelatedProducts({ productId }: { productId: string }) {
+  const { data } = useQuery({
+    queryKey: ["relatedProducts", productId],
+    queryFn: () => getRelatedProducts({ data: { productId, limit: 8 } }),
+  });
+  const items = data?.items ?? [];
+  if (items.length === 0) return null;
+  return (
+    <section className="mt-10">
+      <h2 className="font-display text-xl mb-3 flex items-center gap-2">
+        <Sparkle /> RELATED PRODUCTS
+      </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {items.map((it) => (
+          <ProductCard key={it.id} product={it} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Sparkle() {
+  return <Star className="size-4 text-primary" />;
 }
