@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { appContext } from "../server/app.server";
 import { requireSeller, requireStaff } from "../server/auth.server";
-import { q, q1 } from "../server/db.server";
+import { q, q1, run } from "../server/db.server";
 import { callAiJson } from "../server/ai.server";
 import { fail } from "../server/core.server";
 
