@@ -93,8 +93,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d5cc57e6-ddce-4178-9878-6c632ded1aaf/id-preview-3d6b3d14--d926507f-9ada-4d93-b8a8-46d94280014e.lovable.app-1781156384774.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d5cc57e6-ddce-4178-9878-6c632ded1aaf/id-preview-3d6b3d14--d926507f-9ada-4d93-b8a8-46d94280014e.lovable.app-1781156384774.png" },
     ],
+    ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
