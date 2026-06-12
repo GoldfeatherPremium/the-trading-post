@@ -215,3 +215,43 @@ function AccountHub() {
     </PageShell>
   );
 }
+
+function LocaleSwitcher() {
+  const { locale, currency, setLocale, setCurrency } = useLocale();
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+      <p className="text-xs font-bold text-muted-foreground">PREFERENCES</p>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs space-y-1">
+          <span className="text-muted-foreground">Language</span>
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value)}
+            className="w-full h-9 rounded-md bg-secondary text-sm px-2"
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs space-y-1">
+          <span className="text-muted-foreground">Currency</span>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="w-full h-9 rounded-md bg-secondary text-sm px-2"
+          >
+            {SUPPORTED_CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
