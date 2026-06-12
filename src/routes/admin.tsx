@@ -20,6 +20,7 @@ const GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { to: "/admin", label: "Dashboard", exact: true, hint: "Overview & KPIs" },
+      { to: "/admin/analytics", label: "Analytics", hint: "Marketplace insights" },
       { to: "/admin/orders", label: "Orders", hint: "Escrow & lifecycle" },
       { to: "/admin/disputes", label: "Disputes", hint: "Open cases" },
       { to: "/admin/moderation", label: "Chat moderation", hint: "Flagged messages" },
