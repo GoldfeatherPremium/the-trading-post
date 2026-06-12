@@ -200,12 +200,12 @@ async function schemaAlreadyMigrated(e: Engine): Promise<boolean> {
     if (isPostgres()) {
       const r = await e.q<{ c: number }>(
         `select count(*)::int as c from information_schema.tables
-         where table_schema = 'public' and table_name = 'search_queries'`,
+         where table_schema = 'public' and table_name = 'referrals'`,
       );
       return !!r[0] && Number(r[0].c) > 0;
     }
     const r = await e.q<{ name: string }>(
-      `select name from sqlite_master where type='table' and name='search_queries'`,
+      `select name from sqlite_master where type='table' and name='referrals'`,
     );
     return r.length > 0;
   } catch {
