@@ -23,6 +23,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/analytics", label: "Analytics", hint: "Marketplace insights" },
       { to: "/admin/orders", label: "Orders", hint: "Escrow & lifecycle" },
       { to: "/admin/disputes", label: "Disputes", hint: "Open cases" },
+      { to: "/admin/risk", label: "Risk & fraud", hint: "Held orders & velocity rules" },
       { to: "/admin/moderation", label: "Chat moderation", hint: "Flagged messages" },
     ],
   },
