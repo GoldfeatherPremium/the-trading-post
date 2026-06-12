@@ -182,7 +182,7 @@ export const saveProduct = createServerFn({ method: "POST" })
           itemId,
           data.title,
           data.description,
-          data.imageKey ?? null,
+          data.imageIds[0] ? `upload:${data.imageIds[0]}` : (data.imageKey ?? null),
           data.deliverySlaMinutes,
           data.warrantyHours,
           Math.round(data.priceUsdt * 100),
