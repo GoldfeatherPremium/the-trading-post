@@ -31,8 +31,10 @@ const SITE = "https://warm-trade-space.lovable.app";
 
 export const Route = createFileRoute("/browse")({
   validateSearch: searchSchema,
-  head: ({ search }) => {
-    const s = search as z.infer<typeof searchSchema>;
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ deps }) => ({ search: deps.search }),
+  head: ({ loaderData }) => {
+    const s = (loaderData?.search ?? {}) as z.infer<typeof searchSchema>;
     const parts: string[] = [];
     if (s.q) parts.push(`"${s.q}"`);
     if (s.category) parts.push(s.category.replace(/-/g, " "));
@@ -40,7 +42,6 @@ export const Route = createFileRoute("/browse")({
     const label = parts.length ? parts.join(" · ") : "All listings";
     const title = `${label} — Browse X-VAULT`;
     const desc = `Browse ${label.toLowerCase()} on X-VAULT. Escrow-protected, USDT payments, instant delivery from verified sellers.`;
-    // Canonical: only category-only filters get a canonical (avoid indexing every filter combo)
     const canonical =
       s.category && !s.q && !s.item && !s.delivery
         ? `${SITE}/browse?category=${encodeURIComponent(s.category)}`
