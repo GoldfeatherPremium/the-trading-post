@@ -119,7 +119,18 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
 
 export const getHomeData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
-  const [categories, trendingRows, newestRows, topSellers, recentSales, stats] = await Promise.all([
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const [
+    categoryRows,
+    trendingRows,
+    newestRows,
+    topSellers,
+    recentSales,
+    stats,
+    last24h,
+    trendingSearches,
+  ] = await Promise.all([
     q<{
       id: string;
       name: string;
@@ -128,8 +139,11 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async () =>
       default_warranty_hours: number;
       commission_pct: number;
       risk_tier: string;
+      product_count: number;
     }>(
-      `select id, name, slug, icon, default_warranty_hours, commission_pct, risk_tier from categories where is_active = 1 order by sort`,
+      `select c.id, c.name, c.slug, c.icon, c.default_warranty_hours, c.commission_pct, c.risk_tier,
+              (select count(*) from products p where p.category_id = c.id and p.status = 'active') as product_count
+       from categories c where c.is_active = 1 order by c.sort`,
     ),
     q(
       `${productSelect} where p.status = 'active' order by p.sold_count desc, p.views desc limit 8`,
@@ -152,16 +166,29 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async () =>
          (select count(*) from orders where status in ('delivered','completed','released')) as orders,
          (select count(*) from reviews) as reviews`,
     ),
+    q1<{ orders24h: number; gmv24h: number }>(
+      `select count(*) as orders24h, coalesce(sum(total_cents),0) as gmv24h from orders
+         where status in ('delivered','completed','released') and created_at >= ?`,
+      [dayAgo],
+    ),
+    q<{ query: string; uses: number }>(
+      `select query, count(*) as uses from search_queries
+         where created_at >= ? and length(query) >= 2 and results > 0
+         group by query order by uses desc limit 8`,
+      [weekAgo],
+    ),
   ]);
   const trending = trendingRows.map(mapProduct);
   const newest = newestRows.map(mapProduct);
   return {
-    categories,
+    categories: categoryRows,
     trending,
     newest,
     topSellers,
     recentSales,
     stats: stats ?? { sellers: 0, products: 0, orders: 0, reviews: 0 },
+    last24h: last24h ?? { orders24h: 0, gmv24h: 0 },
+    trendingSearches,
   };
 });
 
