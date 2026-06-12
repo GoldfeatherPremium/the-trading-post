@@ -47,7 +47,20 @@ export const Route = createFileRoute("/")({
 type RecentItem = { slug: string; title: string; image_key: string | null; price_cents: number };
 
 function Index() {
+  const { me } = useMe();
   const { data } = useQuery({ queryKey: ["home"], queryFn: () => getHomeData() });
+  const { data: recs } = useQuery({
+    queryKey: ["recs", me?.id ?? "anon"],
+    queryFn: () => getMyRecommendations({ data: { limit: 8 } }),
+    enabled: !!me,
+    staleTime: 60_000,
+  });
+  const { data: feed } = useQuery({
+    queryKey: ["followedFeed", me?.id ?? "anon"],
+    queryFn: () => getFollowedFeed(),
+    enabled: !!me,
+    staleTime: 60_000,
+  });
   const [recent, setRecent] = useState<RecentItem[]>([]);
   useEffect(() => {
     try {
