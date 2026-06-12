@@ -100,6 +100,7 @@ const productInput = z.object({
   region: z.string().max(40).optional(),
   platform: z.string().max(40).optional(),
   requiredInfo: z.string().max(500).optional(),
+  imageIds: z.array(z.string().min(8).max(40)).max(8).default([]),
   productKind: z
     .enum(["one_time", "subscription_slot", "digital_download", "service"])
     .default("one_time"),
