@@ -725,6 +725,27 @@ async function migrate(e: Engine): Promise<void> {
       )`,
     )
     .catch(() => {});
+
+  // --- Phase 12: seller-uploaded product images (multiple per listing) ---
+  await e
+    .exec(
+      `create table if not exists product_images (
+        id text primary key,
+        product_id text,
+        seller_id text not null,
+        mime text not null,
+        data text not null,
+        sort integer not null default 0,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(
+      `create index if not exists idx_product_images on product_images(product_id, sort)`,
+    )
+    .catch(() => {});
+
   // seed a sane default set if empty
   const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
   if (!seeded[0] || Number(seeded[0].c) === 0) {
