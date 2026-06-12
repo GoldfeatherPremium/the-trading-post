@@ -11,13 +11,15 @@ import {
   ArrowUpRight,
   History,
 } from "lucide-react";
-import { getHomeData } from "@/lib/api/catalog";
+import { getHomeData, getMyRecommendations } from "@/lib/api/catalog";
+import { getFollowedFeed } from "@/lib/api/follows";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { usdtShort, timeAgo } from "@/lib/format";
 import { productImage } from "@/lib/images";
 import { SmartSearch } from "@/components/smart-search";
 import { VerificationBadge, TrustScore } from "@/components/seller-badge";
+import { useMe } from "@/hooks/use-me";
 
 const SITE = "https://warm-trade-space.lovable.app";
 
