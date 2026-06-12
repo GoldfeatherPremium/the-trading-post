@@ -34,8 +34,6 @@ import {
 
 export function SiteHeader() {
   const { me, unreadNotifications, unreadMessages, banner } = useMe();
-export function SiteHeader() {
-  const { me, unreadNotifications, unreadMessages, banner } = useMe();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const loyalty = useQuery({
