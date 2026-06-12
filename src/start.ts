@@ -47,6 +47,6 @@ const dbFnMiddleware = createMiddleware({ type: "function" }).server(async ({ ne
 );
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware, dbRequestMiddleware],
+  requestMiddleware: [securityHeadersMiddleware, errorMiddleware, dbRequestMiddleware],
   functionMiddleware: [dbFnMiddleware],
 }));
