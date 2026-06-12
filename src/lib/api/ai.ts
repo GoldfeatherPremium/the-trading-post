@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { appContext } from "../server/app.server";
 import { requireSeller, requireStaff } from "../server/auth.server";
-import { q, q1 } from "../server/db.server";
+import { q, q1, run } from "../server/db.server";
 import { callAiJson } from "../server/ai.server";
 import { fail } from "../server/core.server";
 
@@ -200,3 +200,125 @@ Return JSON: { "riskScore": 0-100 int, "band": "low"|"medium"|"high", "reasons":
     });
     return { ...out, ageDays };
   });
+
+// ---------------------------------------------------------------------------
+// AI Listing Optimizer — rewrite an existing low-CTR/low-conversion listing
+// ---------------------------------------------------------------------------
+type OptimizerOut = {
+  newTitle: string;
+  newDescription: string;
+  newSeoTitle: string;
+  newSeoDescription: string;
+  newTags: string[];
+  rationale: string;
+  changes: string[];
+};
+
+export const optimizeListing = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ productId: z.string() }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const seller = await requireSeller();
+    const p = await q1<{
+      id: string;
+      seller_id: string;
+      title: string;
+      description: string;
+      views: number;
+      sold_count: number;
+      price_cents: number;
+      category_name: string;
+    }>(
+      `select p.id, p.seller_id, p.title, p.description, p.views, p.sold_count, p.price_cents,
+              c.name as category_name
+         from products p join categories c on c.id = p.category_id where p.id = ?`,
+      [data.productId],
+    );
+    if (!p || p.seller_id !== seller.id) fail("Listing not found.");
+    const conv = p!.views > 0 ? (p!.sold_count / p!.views) * 100 : 0;
+    const sys =
+      "You are X-VAULT's senior listing optimizer. Rewrite digital marketplace listings " +
+      "to lift CTR and conversion. Honest, scannable, scarcity-aware copy. No prohibited " +
+      "claims (no stolen/hacked, no shared credentials). Return ONLY valid JSON.";
+    const out = await callAiJson<OptimizerOut>({
+      messages: [
+        { role: "system", content: sys },
+        {
+          role: "user",
+          content: `Optimize this listing.
+Category: ${p!.category_name}
+Price (USD): $${(p!.price_cents / 100).toFixed(2)}
+Views: ${p!.views}
+Sales: ${p!.sold_count}
+Current conversion: ${conv.toFixed(2)}%
+
+CURRENT TITLE: ${p!.title}
+CURRENT DESCRIPTION: ${p!.description}
+
+Return JSON: {
+  "newTitle": string (60-90 chars, keyword-first, no ALL-CAPS spam),
+  "newDescription": string (200-450 chars, plain text, scannable bullets allowed via "•"),
+  "newSeoTitle": string (<=60 chars),
+  "newSeoDescription": string (<=155 chars),
+  "newTags": string[] (5-8 lowercase keywords),
+  "rationale": string (1-2 sentences explaining the angle taken),
+  "changes": string[] (3-5 bullet diff vs. current copy)
+}`,
+        },
+      ],
+      temperature: 0.6,
+    });
+    return { ...out, current: { title: p!.title, description: p!.description }, conv };
+  });
+
+export const applyListingOptimization = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      productId: z.string(),
+      title: z.string().trim().min(8).max(140),
+      description: z.string().trim().min(20).max(2000),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const seller = await requireSeller();
+    const p = await q1<{ seller_id: string }>(`select seller_id from products where id = ?`, [
+      data.productId,
+    ]);
+    if (!p || p.seller_id !== seller.id) fail("Listing not found.");
+    // run() already imported at top of file
+    await run(`update products set title = ?, description = ? where id = ?`, [
+      data.title,
+      data.description,
+      data.productId,
+    ]);
+    return { ok: true };
+  });
+
+export const listOptimizationCandidates = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  const seller = await requireSeller();
+  const rows = await q<{
+    id: string;
+    title: string;
+    views: number;
+    sold_count: number;
+    price_cents: number;
+    image_key: string | null;
+  }>(
+    `select id, title, views, sold_count, price_cents, image_key
+       from products
+       where seller_id = ? and status in ('active','out_of_stock')
+       order by case when views >= 25 then (sold_count * 1.0) / nullif(views,0) end asc nulls last,
+                views desc
+       limit 30`,
+    [seller.id],
+  );
+  return {
+    candidates: rows.map((r) => ({
+      ...r,
+      conv: r.views > 0 ? (r.sold_count / r.views) * 100 : 0,
+    })),
+  };
+});
+

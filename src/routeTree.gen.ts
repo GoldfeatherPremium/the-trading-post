@@ -35,6 +35,7 @@ import { Route as SellerReviewsRouteImport } from './routes/seller.reviews'
 import { Route as SellerPromotionsRouteImport } from './routes/seller.promotions'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
 import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
+import { Route as SellerOptimizeRouteImport } from './routes/seller.optimize'
 import { Route as SellerNewProductRouteImport } from './routes/seller.new-product'
 import { Route as SellerAnalyticsRouteImport } from './routes/seller.analytics'
 import { Route as SUsernameRouteImport } from './routes/s.$username'
@@ -47,6 +48,7 @@ import { Route as AdminVerificationsRouteImport } from './routes/admin.verificat
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSellersRouteImport } from './routes/admin.sellers'
+import { Route as AdminRiskRouteImport } from './routes/admin.risk'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminModerationRouteImport } from './routes/admin.moderation'
@@ -63,6 +65,7 @@ import { Route as AccountFollowingRouteImport } from './routes/account.following
 import { Route as AccountAffiliateRouteImport } from './routes/account.affiliate'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
 import { Route as ApiPublicImgIdRouteImport } from './routes/api/public/img.$id'
+import { Route as ApiPublicCronFollowDigestRouteImport } from './routes/api/public/cron/follow-digest'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
@@ -194,6 +197,11 @@ const SellerOrdersRoute = SellerOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => SellerRoute,
 } as any)
+const SellerOptimizeRoute = SellerOptimizeRouteImport.update({
+  id: '/optimize',
+  path: '/optimize',
+  getParentRoute: () => SellerRoute,
+} as any)
 const SellerNewProductRoute = SellerNewProductRouteImport.update({
   id: '/new-product',
   path: '/new-product',
@@ -252,6 +260,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminSellersRoute = AdminSellersRouteImport.update({
   id: '/sellers',
   path: '/sellers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRiskRoute = AdminRiskRouteImport.update({
+  id: '/risk',
+  path: '/risk',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminProductsRoute = AdminProductsRouteImport.update({
@@ -334,6 +347,12 @@ const ApiPublicImgIdRoute = ApiPublicImgIdRouteImport.update({
   path: '/api/public/img/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronFollowDigestRoute =
+  ApiPublicCronFollowDigestRouteImport.update({
+    id: '/api/public/cron/follow-digest',
+    path: '/api/public/cron/follow-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -365,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/risk': typeof AdminRiskRoute
   '/admin/sellers': typeof AdminSellersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -377,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
+  '/seller/optimize': typeof SellerOptimizeRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
@@ -389,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/orders/': typeof OrdersIndexRoute
   '/seller/': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/cron/follow-digest': typeof ApiPublicCronFollowDigestRoute
   '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRoutesByTo {
@@ -419,6 +441,7 @@ export interface FileRoutesByTo {
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/risk': typeof AdminRiskRoute
   '/admin/sellers': typeof AdminSellersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -431,6 +454,7 @@ export interface FileRoutesByTo {
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
+  '/seller/optimize': typeof SellerOptimizeRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
@@ -443,6 +467,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersIndexRoute
   '/seller': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/cron/follow-digest': typeof ApiPublicCronFollowDigestRoute
   '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRoutesById {
@@ -476,6 +501,7 @@ export interface FileRoutesById {
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/risk': typeof AdminRiskRoute
   '/admin/sellers': typeof AdminSellersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -488,6 +514,7 @@ export interface FileRoutesById {
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
+  '/seller/optimize': typeof SellerOptimizeRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
   '/seller/promotions': typeof SellerPromotionsRoute
@@ -500,6 +527,7 @@ export interface FileRoutesById {
   '/orders/': typeof OrdersIndexRoute
   '/seller/': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/cron/follow-digest': typeof ApiPublicCronFollowDigestRoute
   '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRouteTypes {
@@ -534,6 +562,7 @@ export interface FileRouteTypes {
     | '/admin/moderation'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/risk'
     | '/admin/sellers'
     | '/admin/settings'
     | '/admin/users'
@@ -546,6 +575,7 @@ export interface FileRouteTypes {
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
+    | '/seller/optimize'
     | '/seller/orders'
     | '/seller/products'
     | '/seller/promotions'
@@ -558,6 +588,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/seller/'
     | '/seller/stock/$productId'
+    | '/api/public/cron/follow-digest'
     | '/api/public/img/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -588,6 +619,7 @@ export interface FileRouteTypes {
     | '/admin/moderation'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/risk'
     | '/admin/sellers'
     | '/admin/settings'
     | '/admin/users'
@@ -600,6 +632,7 @@ export interface FileRouteTypes {
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
+    | '/seller/optimize'
     | '/seller/orders'
     | '/seller/products'
     | '/seller/promotions'
@@ -612,6 +645,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/seller'
     | '/seller/stock/$productId'
+    | '/api/public/cron/follow-digest'
     | '/api/public/img/$id'
   id:
     | '__root__'
@@ -644,6 +678,7 @@ export interface FileRouteTypes {
     | '/admin/moderation'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/risk'
     | '/admin/sellers'
     | '/admin/settings'
     | '/admin/users'
@@ -656,6 +691,7 @@ export interface FileRouteTypes {
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
+    | '/seller/optimize'
     | '/seller/orders'
     | '/seller/products'
     | '/seller/promotions'
@@ -668,6 +704,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/seller/'
     | '/seller/stock/$productId'
+    | '/api/public/cron/follow-digest'
     | '/api/public/img/$id'
   fileRoutesById: FileRoutesById
 }
@@ -693,6 +730,7 @@ export interface RootRouteChildren {
   RCodeRoute: typeof RCodeRoute
   SUsernameRoute: typeof SUsernameRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
+  ApiPublicCronFollowDigestRoute: typeof ApiPublicCronFollowDigestRoute
   ApiPublicImgIdRoute: typeof ApiPublicImgIdRoute
 }
 
@@ -880,6 +918,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SellerOrdersRouteImport
       parentRoute: typeof SellerRoute
     }
+    '/seller/optimize': {
+      id: '/seller/optimize'
+      path: '/optimize'
+      fullPath: '/seller/optimize'
+      preLoaderRoute: typeof SellerOptimizeRouteImport
+      parentRoute: typeof SellerRoute
+    }
     '/seller/new-product': {
       id: '/seller/new-product'
       path: '/new-product'
@@ -962,6 +1007,13 @@ declare module '@tanstack/react-router' {
       path: '/sellers'
       fullPath: '/admin/sellers'
       preLoaderRoute: typeof AdminSellersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/risk': {
+      id: '/admin/risk'
+      path: '/risk'
+      fullPath: '/admin/risk'
+      preLoaderRoute: typeof AdminRiskRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/products': {
@@ -1076,6 +1128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicImgIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/follow-digest': {
+      id: '/api/public/cron/follow-digest'
+      path: '/api/public/cron/follow-digest'
+      fullPath: '/api/public/cron/follow-digest'
+      preLoaderRoute: typeof ApiPublicCronFollowDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1106,6 +1165,7 @@ interface AdminRouteChildren {
   AdminModerationRoute: typeof AdminModerationRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
+  AdminRiskRoute: typeof AdminRiskRoute
   AdminSellersRoute: typeof AdminSellersRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1125,6 +1185,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminModerationRoute: AdminModerationRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
+  AdminRiskRoute: AdminRiskRoute,
   AdminSellersRoute: AdminSellersRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -1149,6 +1210,7 @@ const DisputesRouteWithChildren = DisputesRoute._addFileChildren(
 interface SellerRouteChildren {
   SellerAnalyticsRoute: typeof SellerAnalyticsRoute
   SellerNewProductRoute: typeof SellerNewProductRoute
+  SellerOptimizeRoute: typeof SellerOptimizeRoute
   SellerOrdersRoute: typeof SellerOrdersRoute
   SellerProductsRoute: typeof SellerProductsRoute
   SellerPromotionsRoute: typeof SellerPromotionsRoute
@@ -1164,6 +1226,7 @@ interface SellerRouteChildren {
 const SellerRouteChildren: SellerRouteChildren = {
   SellerAnalyticsRoute: SellerAnalyticsRoute,
   SellerNewProductRoute: SellerNewProductRoute,
+  SellerOptimizeRoute: SellerOptimizeRoute,
   SellerOrdersRoute: SellerOrdersRoute,
   SellerProductsRoute: SellerProductsRoute,
   SellerPromotionsRoute: SellerPromotionsRoute,
@@ -1201,6 +1264,7 @@ const rootRouteChildren: RootRouteChildren = {
   RCodeRoute: RCodeRoute,
   SUsernameRoute: SUsernameRoute,
   OrdersIndexRoute: OrdersIndexRoute,
+  ApiPublicCronFollowDigestRoute: ApiPublicCronFollowDigestRoute,
   ApiPublicImgIdRoute: ApiPublicImgIdRoute,
 }
 export const routeTree = rootRouteImport
