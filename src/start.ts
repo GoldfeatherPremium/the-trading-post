@@ -20,9 +20,11 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 
 // Scope the postgres client to each request so Cloudflare Workers'
 // "Cannot perform I/O on behalf of a different request" error never fires.
-const dbRequestMiddleware = createMiddleware().server(({ next }) => withDbRequest(() => next()));
-const dbFnMiddleware = createMiddleware({ type: "function" }).server(({ next }) =>
-  withDbRequest(() => next()),
+const dbRequestMiddleware = createMiddleware().server(async ({ next }) =>
+  withDbRequest(async () => await next()),
+);
+const dbFnMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) =>
+  withDbRequest(async () => await next()),
 );
 
 export const startInstance = createStart(() => ({
