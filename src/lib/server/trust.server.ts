@@ -192,8 +192,6 @@ export async function recomputeSellerTrust(userId: string): Promise<void> {
 /** Return up to `days` of recent trust score samples (oldest first). */
 export async function getTrustHistory(userId: string, days = 30) {
   const since = Date.now() - days * 86_400_000;
-  const rows = await q1; // no-op to avoid unused import warnings; real query below
-  void rows;
   const { q } = await import("./db.server");
   const items = await q<{ score: number; captured_at: number; seller_level: number }>(
     `select score, captured_at, seller_level from seller_trust_history
@@ -206,16 +204,4 @@ export async function getTrustHistory(userId: string, days = 30) {
     level: Number(r.seller_level),
     at: Number(r.captured_at),
   }));
-}
-      ratingAvg,
-      stats.rating_count,
-      completionRate,
-      stats.refund_count,
-      stats.dispute_count,
-      avgDelivery,
-      score,
-      level,
-      userId,
-    ],
-  );
 }
