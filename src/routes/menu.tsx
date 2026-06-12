@@ -68,6 +68,7 @@ function AccountHub() {
         { label: "Purchase Orders", to: "/orders", icon: ShoppingBag },
         { label: "Favorites", to: "/favorites", icon: Heart },
         { label: "My Wallet", to: "/wallet", icon: Wallet },
+        { label: "Refer & Earn", to: "/account/affiliate", icon: Wallet },
         { label: "Browse the Market", to: "/browse" },
       ],
     },
