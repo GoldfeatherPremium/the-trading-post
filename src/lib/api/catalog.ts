@@ -237,7 +237,37 @@ export const browseProducts = createServerFn({ method: "GET" })
     ]);
     const total = totalRow!.c;
     const items = itemRows.map(mapProduct);
+    // Log non-empty queries for analytics. Cap query length and best-effort
+    // (never block search if logging fails).
+    if (data.q && data.q.trim().length >= 2) {
+      run(
+        `insert into search_queries (query, results, created_at) values (?,?,?)`,
+        [data.q.trim().slice(0, 100).toLowerCase(), total, Date.now()],
+      ).catch(() => {});
+    }
     return { items, total, page: data.page, pageCount: Math.max(1, Math.ceil(total / PAGE)) };
+  });
+
+export const getRelatedProducts = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ productId: z.string(), limit: z.number().int().min(1).max(12).default(8) }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const seed = await q1<{ category_id: string; item_id: string | null; seller_id: string }>(
+      `select category_id, item_id, seller_id from products where id = ?`,
+      [data.productId],
+    );
+    if (!seed) return { items: [] as PublicProduct[] };
+    // Prefer same catalog item, then same category. Exclude self & out-of-stock.
+    const rows = await q(
+      `${productSelect}
+       where p.status = 'active' and p.id <> ?
+         and (p.item_id = ? or p.category_id = ?)
+       order by (case when p.item_id = ? then 0 else 1 end),
+                p.sold_count desc, u.rating desc
+       limit ?`,
+      [data.productId, seed.item_id ?? "", seed.category_id, seed.item_id ?? "", data.limit],
+    );
+    return { items: rows.map(mapProduct) };
   });
 
 export const getProduct = createServerFn({ method: "GET" })
