@@ -91,6 +91,7 @@ function AdminDisputes() {
               <b>Seller:</b> {dd.seller_response}
             </p>
           )}
+          <AiAssist orderId={dd.order_id as string} onCopy={(reply) => setNote(reply.slice(0, 200))} />
           {dd.status !== "resolved" ? (
             resolving === dd.id ? (
               <div className="flex gap-2 flex-wrap items-center pt-1">
