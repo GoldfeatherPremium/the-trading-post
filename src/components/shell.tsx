@@ -117,10 +117,30 @@ export function SiteHeader() {
                 <DropdownMenuTrigger className="size-9 rounded-full bg-primary/20 border border-primary/40 grid place-items-center text-xs font-bold text-primary uppercase">
                   {me.username.slice(0, 2)}
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="text-xs">
-                    {me.username}
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{me.username}</span>
+                      {loyalty.data && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30 rounded px-1.5 py-0.5">
+                          <Sparkles className="size-2.5" /> {loyalty.data.tier.label}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground font-normal">{me.email}</div>
+                    {loyalty.data?.nextTier && (
+                      <div className="mt-1.5">
+                        <div className="h-1 rounded bg-secondary overflow-hidden">
+                          <div
+                            className="h-full bg-primary"
+                            style={{ width: `${Math.round(loyalty.data.progressToNext * 100)}%` }}
+                          />
+                        </div>
+                        <div className="text-[9px] text-muted-foreground font-normal mt-1">
+                          Next: {loyalty.data.nextTier.label}
+                        </div>
+                      </div>
+                    )}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate({ to: "/orders" })}>
@@ -131,6 +151,9 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/favorites" })}>
                     <Heart className="size-4" /> Favorites
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/account/following" })}>
+                    <Users className="size-4" /> Following
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/disputes" })}>
                     <Scale className="size-4" /> Dispute Center
