@@ -112,7 +112,7 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
 
 export const getHomeData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
-  const [categories, trendingRows, newestRows, topSellers, recentSales] = await Promise.all([
+  const [categories, trendingRows, newestRows, topSellers, recentSales, stats] = await Promise.all([
     q<{
       id: string;
       name: string;
@@ -138,10 +138,24 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async () =>
        from orders o join users u on u.id = o.buyer_id
        where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
     ),
+    q1<{ sellers: number; products: number; orders: number; reviews: number }>(
+      `select
+         (select count(*) from users where seller_status = 'approved' and is_banned = 0) as sellers,
+         (select count(*) from products where status = 'active') as products,
+         (select count(*) from orders where status in ('delivered','completed','released')) as orders,
+         (select count(*) from reviews) as reviews`,
+    ),
   ]);
   const trending = trendingRows.map(mapProduct);
   const newest = newestRows.map(mapProduct);
-  return { categories, trending, newest, topSellers, recentSales };
+  return {
+    categories,
+    trending,
+    newest,
+    topSellers,
+    recentSales,
+    stats: stats ?? { sellers: 0, products: 0, orders: 0, reviews: 0 },
+  };
 });
 
 export const browseProducts = createServerFn({ method: "GET" })
