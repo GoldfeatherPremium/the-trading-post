@@ -235,7 +235,19 @@ export const getPayment = createServerFn({ method: "GET" })
     }>(`select * from deposits where order_id = ? order by created_at desc limit 1`, [
       data.orderId,
     ]))!;
-    return { order: o!, deposit };
+    const seller = await q1<{
+      username: string;
+      verification_tier: "unverified" | "verified" | "business" | "premium";
+      trust_score: number;
+      seller_level: number;
+      total_sales: number;
+      completion_rate: number;
+    }>(
+      `select username, verification_tier, trust_score, seller_level, total_sales, completion_rate
+         from users where id = ?`,
+      [o!.seller_id],
+    );
+    return { order: o!, deposit, seller: seller ?? null };
   });
 
 export const simulatePaymentSent = createServerFn({ method: "POST" })
