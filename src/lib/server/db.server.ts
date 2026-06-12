@@ -577,6 +577,12 @@ async function migrate(e: Engine): Promise<void> {
     `alter table products add column allowed_countries text`,
     `alter table products add column blocked_countries text`,
     `alter table site_settings add column base_currency text not null default 'USD'`,
+    // --- Phase 11: seller promotions ---
+    `alter table coupons add column seller_id text`,
+    `alter table coupons add column product_id text`,
+    `alter table coupons add column label text`,
+    `alter table products add column sale_price_cents ${big}`,
+    `alter table products add column sale_ends_at ${big}`,
   ];
   for (const stmt of addColumns) {
     await e.exec(stmt).catch(() => {}); // already exists
