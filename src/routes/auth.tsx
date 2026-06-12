@@ -32,7 +32,17 @@ function AuthPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const doRegister = useMutation({
-    mutationFn: () => register({ data: form }),
+    mutationFn: () => {
+      let refCode: string | undefined;
+      if (typeof window !== "undefined") {
+        try {
+          refCode = localStorage.getItem("ref_code") ?? undefined;
+        } catch {
+          /* ignore */
+        }
+      }
+      return register({ data: { ...form, refCode } });
+    },
     onSuccess,
     onError: (e: Error) => toast.error(e.message),
   });
