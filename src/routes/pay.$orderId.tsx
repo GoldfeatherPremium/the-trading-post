@@ -83,6 +83,33 @@ function PayPage() {
       <div className="max-w-md mx-auto py-6 space-y-4">
         <h1 className="font-display text-3xl text-center">COMPLETE PAYMENT</h1>
 
+        {data.seller && (
+          <Link
+            to="/s/$username"
+            params={{ username: data.seller.username }}
+            className="block bg-card border border-border rounded-lg px-4 py-3 hover:border-primary/50"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground tracking-widest font-bold">SELLER</p>
+                <p className="text-sm font-bold truncate">{data.seller.username}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {data.seller.total_sales.toLocaleString()} sales ·{" "}
+                  {data.seller.completion_rate.toFixed(0)}% completion
+                </p>
+              </div>
+              <div className="shrink-0">
+                <SellerBadge
+                  tier={data.seller.verification_tier}
+                  level={data.seller.seller_level}
+                  score={data.seller.trust_score}
+                  size="xs"
+                />
+              </div>
+            </div>
+          </Link>
+        )}
+
         {expired ? (
           <div className="bg-card border border-destructive/40 rounded-lg p-6 text-center space-y-3">
             <p className="text-sm text-destructive font-bold">Payment window expired</p>
