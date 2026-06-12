@@ -673,3 +673,60 @@ export const suggestItem = createServerFn({ method: "POST" })
     await audit(user.id, "item_suggestion.create", "item_suggestion", data.name);
     return { ok: true };
   });
+
+// ---------------------------------------------------------------------------
+// Seller-uploaded product images (stored inline as base64 in the DB so we
+// don't need an external object store). Hard caps: 2MB per image, 8 per
+// listing. Served back through /api/public/img/$id.
+// ---------------------------------------------------------------------------
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB raw
+const ALLOWED_IMAGE_MIME = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+export const uploadProductImage = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      mime: z.string().min(3).max(40),
+      dataBase64: z.string().min(16).max(Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 1024),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    if (!ALLOWED_IMAGE_MIME.includes(data.mime))
+      fail("Unsupported image format. Use PNG, JPEG, WebP, or GIF.");
+    const approxBytes = Math.floor((data.dataBase64.length * 3) / 4);
+    if (approxBytes > MAX_IMAGE_BYTES) fail("Image is too large (2 MB max).");
+    const recent = (await q1<{ c: number }>(
+      `select count(*) c from product_images where seller_id = ? and created_at > ?`,
+      [user.id, now() - 3_600_000],
+    ))!.c;
+    if (recent > 60) fail("Upload limit reached, try again later.");
+    const id = uid();
+    await run(
+      `insert into product_images (id, product_id, seller_id, mime, data, sort, created_at)
+       values (?, null, ?, ?, ?, 0, ?)`,
+      [id, user.id, data.mime, data.dataBase64, now()],
+    );
+    return { id };
+  });
+
+export const listMyProductImages = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ productId: z.string() }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    const rows = await q<{ id: string; mime: string }>(
+      `select id, mime from product_images where product_id = ? and seller_id = ? order by sort`,
+      [data.productId, user.id],
+    );
+    return { images: rows };
+  });
+
+export const deleteProductImage = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    await run(`delete from product_images where id = ? and seller_id = ?`, [data.id, user.id]);
+    return { ok: true };
+  });
