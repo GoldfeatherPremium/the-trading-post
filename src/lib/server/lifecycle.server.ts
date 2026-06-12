@@ -72,9 +72,31 @@ export function confirmPayment(orderId: string): Promise<void> {
     const o = await getOrderRow(orderId);
     if (!o || o.status !== "awaiting_payment") return;
     const t = now();
+    // --- Fraud rules engine: score on payment, auto-hold high-risk orders ---
+    const risk = await assessOrderRisk({
+      buyerId: o.buyer_id,
+      sellerId: o.seller_id,
+      totalCents: o.total_cents,
+    });
+    await recordRiskEvent({
+      userId: o.buyer_id,
+      sellerId: o.seller_id,
+      orderId: orderId,
+      kind: "payment",
+      assessment: risk,
+    });
+    const holdRisk = risk.action === "hold";
+    const escrow = holdRisk ? "on_hold" : "held";
     await run(
-      `update orders set status = 'paid', paid_at = ?, escrow_status = 'held' where id = ?`,
-      [t, orderId],
+      `update orders set status = 'paid', paid_at = ?, escrow_status = ?, escrow_hold_reason = ?, escrow_hold_by = ?, escrow_hold_at = ? where id = ?`,
+      [
+        t,
+        escrow,
+        holdRisk ? `Auto-hold (risk ${risk.score}): ${risk.reasons.slice(0, 2).join("; ")}` : null,
+        holdRisk ? "system:fraud-engine" : null,
+        holdRisk ? t : null,
+        orderId,
+      ],
     );
     await run(`update deposits set status = 'confirmed', confirmations = 20 where order_id = ?`, [
       orderId,
