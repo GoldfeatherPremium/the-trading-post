@@ -6,6 +6,7 @@ import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { SellerBadge } from "@/components/seller-badge";
 import { TrustSparkline } from "@/components/trust-sparkline";
+import { FollowSellerButton } from "@/components/follow-seller-button";
 import { timeAgo } from "@/lib/format";
 
 const SITE = "https://warm-trade-space.lovable.app";
