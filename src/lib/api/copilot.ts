@@ -62,7 +62,7 @@ export const aiDraftListing = createServerFn({ method: "POST" })
       DraftSchema,
       `You are X-VAULT's listing copilot. Write crisp, trustworthy product listings for a digital-goods marketplace.\nRespect this policy and never produce a listing that violates it. If the brief looks prohibited, return a listing whose 'warnings' explains why it cannot be listed and leave title/description generic.\n${POLICY}\nKeep description honest, mention delivery method and any region locks, never invent features.`,
     );
-    await audit(user.id, "copilot.draft", "product", null, { len: data.brief.length });
+    await audit(user.id, "copilot.draft", "product", undefined, { len: data.brief.length });
     return out;
   });
 
