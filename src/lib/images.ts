@@ -20,5 +20,14 @@ export const PRODUCT_IMAGES: Record<string, string> = {
 
 export const IMAGE_KEYS = Object.keys(PRODUCT_IMAGES);
 
-export const productImage = (key: string | null | undefined) =>
-  (key && PRODUCT_IMAGES[key]) || itemGold;
+/**
+ * Resolve a product image key to a URL.
+ * - Seller-uploaded image IDs (stored as `upload:<id>` in `products.image_key`)
+ *   are served by the public image route.
+ * - Legacy preset keys map to bundled assets.
+ * - Falls back to the gold coins illustration.
+ */
+export const productImage = (key: string | null | undefined): string => {
+  if (key && key.startsWith("upload:")) return `/api/public/img/${key.slice("upload:".length)}`;
+  return (key && PRODUCT_IMAGES[key]) || itemGold;
+};
