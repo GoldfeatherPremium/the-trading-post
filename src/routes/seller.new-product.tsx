@@ -1,13 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { AlertTriangle, BookOpen, ListChecks, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, BookOpen, ListChecks, Search, Send, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { getHomeData, listCatalogItems } from "@/lib/api/catalog";
-import { suggestItem } from "@/lib/api/seller";
-import { listMyProducts, saveProduct } from "@/lib/api/seller";
-import { IMAGE_KEYS, productImage } from "@/lib/images";
+import {
+  deleteProductImage,
+  listMyProductImages,
+  listMyProducts,
+  saveProduct,
+  suggestItem,
+  uploadProductImage,
+} from "@/lib/api/seller";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +22,20 @@ export const Route = createFileRoute("/seller/new-product")({
   validateSearch: z.object({ edit: z.string().optional() }),
   component: ProductForm,
 });
+
+// Common country list for region targeting
+const COUNTRIES = [
+  "United States", "United Kingdom", "Canada", "Australia", "Germany", "France",
+  "Spain", "Italy", "Netherlands", "Sweden", "Norway", "Denmark", "Finland",
+  "Poland", "Portugal", "Ireland", "Belgium", "Austria", "Switzerland",
+  "Brazil", "Mexico", "Argentina", "Chile", "Colombia",
+  "Japan", "South Korea", "China", "Singapore", "Hong Kong", "Taiwan",
+  "India", "Pakistan", "Bangladesh", "Indonesia", "Philippines", "Vietnam", "Thailand", "Malaysia",
+  "Turkey", "Saudi Arabia", "UAE", "Egypt", "Israel",
+  "South Africa", "Nigeria", "Kenya",
+  "Russia", "Ukraine", "Czech Republic", "Romania", "Greece",
+  "New Zealand",
+];
 
 function ProductForm() {
   const { edit } = Route.useSearch();
@@ -33,28 +52,45 @@ function ProductForm() {
     categoryId: "",
     title: "",
     description: "",
-    imageKey: "gold",
     deliveryType: "auto" as "auto" | "manual",
     deliverySlaMinutes: 60,
     warrantyHours: "" as string,
     priceUsdt: "" as string,
     minQty: 1,
     maxQty: 50,
-    region: "",
     platform: "",
     requiredInfo: "",
   });
+  const [regionMode, setRegionMode] = useState<"global" | "country">("global");
+  const [regionCountry, setRegionCountry] = useState<string>("");
   const [agreed, setAgreed] = useState(false);
   const [variants, setVariants] = useState<Array<{ title: string; priceUsdt: string }>>([]);
   const [expiresInDays, setExpiresInDays] = useState(0);
   const [insuranceDays, setInsuranceDays] = useState(0);
+
+  // Item picker (searchable)
   const [itemId, setItemId] = useState("");
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemOpen, setItemOpen] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestName, setSuggestName] = useState("");
+
+  // Images
+  const [imageIds, setImageIds] = useState<string[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+
   const { data: catalog } = useQuery({
     queryKey: ["catalogItems"],
     queryFn: () => listCatalogItems(),
   });
+  const selectedItem = catalog?.items.find((i) => i.id === itemId);
+  const filteredItems = useMemo(() => {
+    const q = itemQuery.trim().toLowerCase();
+    const all = catalog?.items ?? [];
+    if (!q) return all.slice(0, 40);
+    return all.filter((i) => i.name.toLowerCase().includes(q)).slice(0, 40);
+  }, [catalog, itemQuery]);
+
   const suggest = useMutation({
     mutationFn: () => suggestItem({ data: { name: suggestName } }),
     onSuccess: () => {
@@ -65,6 +101,7 @@ function ProductForm() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Hydrate when editing
   useEffect(() => {
     if (edit && mine) {
       const p = mine.products.find((x) => x.id === edit);
@@ -73,21 +110,54 @@ function ProductForm() {
           categoryId: p.category_id as string,
           title: p.title as string,
           description: p.description as string,
-          imageKey: (p.image_key as string) ?? "gold",
           deliveryType: p.delivery_type as never,
           deliverySlaMinutes: p.delivery_sla_minutes as number,
           warrantyHours: p.warranty_hours ? String(p.warranty_hours) : "",
           priceUsdt: String((p.price_cents as number) / 100),
           minQty: p.min_qty as number,
           maxQty: p.max_qty as number,
-          region: (p.region as string) ?? "",
           platform: (p.platform as string) ?? "",
           requiredInfo: (p.required_info as string) ?? "",
         });
+        const region = (p.region as string) ?? "";
+        if (!region || region.toLowerCase() === "global") {
+          setRegionMode("global");
+        } else {
+          setRegionMode("country");
+          setRegionCountry(region);
+        }
         setItemId((p.item_id as string) ?? "");
+        // Load existing images
+        listMyProductImages({ data: { productId: edit } })
+          .then((r) => setImageIds(r.images.map((i) => i.id)))
+          .catch(() => {});
       }
     }
   }, [edit, mine]);
+
+  const uploadImage = useMutation({
+    mutationFn: async (file: File) => {
+      if (file.size > 2 * 1024 * 1024) throw new Error("Image must be under 2 MB.");
+      const dataBase64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const s = String(r.result);
+          resolve(s.slice(s.indexOf(",") + 1));
+        };
+        r.onerror = () => reject(new Error("Could not read file."));
+        r.readAsDataURL(file);
+      });
+      return uploadProductImage({ data: { mime: file.type, dataBase64 } });
+    },
+    onSuccess: (r) => setImageIds((prev) => [...prev, r.id]),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeImage = useMutation({
+    mutationFn: (id: string) => deleteProductImage({ data: { id } }),
+    onSuccess: (_r, id) => setImageIds((prev) => prev.filter((x) => x !== id)),
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const save = useMutation({
     mutationFn: () =>
@@ -103,14 +173,15 @@ function ProductForm() {
           categoryId: form.categoryId,
           title: form.title,
           description: form.description,
-          imageKey: form.imageKey,
+          imageKey: undefined,
+          imageIds,
           deliveryType: form.deliveryType,
           deliverySlaMinutes: Number(form.deliverySlaMinutes),
           warrantyHours: form.warrantyHours ? Number(form.warrantyHours) : null,
           priceUsdt: parseFloat(form.priceUsdt),
           minQty: Number(form.minQty),
           maxQty: Number(form.maxQty),
-          region: form.region || undefined,
+          region: regionMode === "global" ? "Global" : regionCountry || undefined,
           platform: form.platform || undefined,
           requiredInfo: form.requiredInfo || undefined,
         },
@@ -124,12 +195,21 @@ function ProductForm() {
   });
 
   const selectedCat = home?.categories.find((c) => c.id === form.categoryId);
+  const allowedCategories = home?.categories.filter((c) => {
+    if (!itemId) return true;
+    if (!selectedItem || selectedItem.categoryIds.length === 0) return true;
+    return selectedItem.categoryIds.includes(c.id);
+  });
 
   return (
     <form
       className="max-w-2xl space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (regionMode === "country" && !regionCountry) {
+          toast.error("Select a country or switch to Global.");
+          return;
+        }
         save.mutate();
       }}
     >
@@ -146,26 +226,66 @@ function ProductForm() {
       </div>
 
       <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
-        <BookOpen className="size-4 text-primary" /> General Info
+        <BookOpen className="size-4 text-primary" /> 1. Select item
       </h2>
 
-      <div className="space-y-1.5">
-        <Label className="text-xs">Selling item (game / brand / service)</Label>
-        <select
-          value={itemId}
-          onChange={(e) => {
-            setItemId(e.target.value);
-            setForm({ ...form, categoryId: "" });
-          }}
-          className="w-full bg-secondary border border-border rounded-md px-2 py-2 text-xs h-9"
-        >
-          <option value="">— General (no specific item) —</option>
-          {catalog?.items.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.name}
-            </option>
-          ))}
-        </select>
+      {/* Searchable item picker */}
+      <div className="space-y-1.5 relative">
+        <Label className="text-xs">Search game, brand or service</Label>
+        {selectedItem ? (
+          <div className="flex items-center justify-between bg-secondary border border-primary/50 rounded-md px-3 py-2">
+            <span className="text-sm font-bold">{selectedItem.name}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setItemId("");
+                setItemQuery("");
+                setForm({ ...form, categoryId: "" });
+              }}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                value={itemQuery}
+                onChange={(e) => {
+                  setItemQuery(e.target.value);
+                  setItemOpen(true);
+                }}
+                onFocus={() => setItemOpen(true)}
+                placeholder="Type to search e.g. Valorant, Steam, Netflix…"
+                className="pl-8"
+              />
+            </div>
+            {itemOpen && filteredItems.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-border rounded-md max-h-60 overflow-auto shadow-lg">
+                {filteredItems.map((i) => (
+                  <button
+                    type="button"
+                    key={i.id}
+                    onClick={() => {
+                      setItemId(i.id);
+                      setItemQuery("");
+                      setItemOpen(false);
+                      setForm({ ...form, categoryId: "" });
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-secondary"
+                  >
+                    {i.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {itemOpen && filteredItems.length === 0 && (
+              <div className="text-[10px] text-muted-foreground px-1">No matches.</div>
+            )}
+          </>
+        )}
         <button
           type="button"
           className="text-[10px] text-primary font-bold"
@@ -193,46 +313,82 @@ function ProductForm() {
         )}
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Sub-category</Label>
+      {/* Category */}
+      <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
+        <BookOpen className="size-4 text-primary" /> 2. Category
+      </h2>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Sub-category</Label>
+        <select
+          required
+          value={form.categoryId}
+          onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+          className="w-full bg-secondary border border-border rounded-md px-2 py-2 text-xs h-9"
+        >
+          <option value="">Select…</option>
+          {allowedCategories?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.name} ({c.commission_pct}% fee)
+            </option>
+          ))}
+        </select>
+        {selectedCat?.risk_tier === "high" && (
+          <p className="text-[10px] text-yellow-400">
+            High-risk category: extended warranty, manual delivery recommended.
+          </p>
+        )}
+      </div>
+
+      {/* Region */}
+      <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
+        <BookOpen className="size-4 text-primary" /> 3. Region
+      </h2>
+      <div className="space-y-1.5">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setRegionMode("global")}
+            className={`flex-1 px-3 py-2 rounded-md text-xs font-bold border ${
+              regionMode === "global"
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border bg-secondary hover:bg-border"
+            }`}
+          >
+            🌍 Global
+          </button>
+          <button
+            type="button"
+            onClick={() => setRegionMode("country")}
+            className={`flex-1 px-3 py-2 rounded-md text-xs font-bold border ${
+              regionMode === "country"
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border bg-secondary hover:bg-border"
+            }`}
+          >
+            📍 Specific country
+          </button>
+        </div>
+        {regionMode === "country" && (
           <select
             required
-            value={form.categoryId}
-            onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+            value={regionCountry}
+            onChange={(e) => setRegionCountry(e.target.value)}
             className="w-full bg-secondary border border-border rounded-md px-2 py-2 text-xs h-9"
           >
-            <option value="">Select…</option>
-            {home?.categories
-              .filter((c) => {
-                if (!itemId) return true;
-                const item = catalog?.items.find((i) => i.id === itemId);
-                return !item || item.categoryIds.length === 0 || item.categoryIds.includes(c.id);
-              })
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.icon} {c.name} ({c.commission_pct}% fee)
-                </option>
-              ))}
+            <option value="">Select country…</option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
-          {selectedCat?.risk_tier === "high" && (
-            <p className="text-[10px] text-yellow-400">
-              High-risk category: extended warranty, manual delivery recommended.
-            </p>
-          )}
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Price (USDT)</Label>
-          <Input
-            required
-            type="number"
-            min="0.5"
-            step="0.01"
-            value={form.priceUsdt}
-            onChange={(e) => setForm({ ...form, priceUsdt: e.target.value })}
-          />
-        </div>
+        )}
       </div>
+
+      {/* Product details */}
+      <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
+        <BookOpen className="size-4 text-primary" /> 4. Product details
+      </h2>
 
       <div className="space-y-1.5">
         <Label className="text-xs">Title (min. 8 chars)</Label>
@@ -242,6 +398,18 @@ function ProductForm() {
           maxLength={120}
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">Price (USDT)</Label>
+        <Input
+          required
+          type="number"
+          min="0.5"
+          step="0.01"
+          value={form.priceUsdt}
+          onChange={(e) => setForm({ ...form, priceUsdt: e.target.value })}
         />
       </div>
 
@@ -257,20 +425,51 @@ function ProductForm() {
         />
       </div>
 
+      {/* Image uploader */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Cover image</Label>
+        <Label className="text-xs">Product images (up to 8, max 2 MB each)</Label>
         <div className="flex gap-2 flex-wrap">
-          {IMAGE_KEYS.map((k) => (
+          {imageIds.map((id) => (
+            <div key={id} className="relative size-20 rounded-md overflow-hidden border border-border">
+              <img src={`/api/public/img/${id}`} alt="" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeImage.mutate(id)}
+                className="absolute top-0.5 right-0.5 bg-black/70 rounded-full p-0.5 text-white hover:bg-red-600"
+                aria-label="Remove image"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+          {imageIds.length < 8 && (
             <button
               type="button"
-              key={k}
-              onClick={() => setForm({ ...form, imageKey: k })}
-              className={`size-14 rounded-md overflow-hidden border-2 ${form.imageKey === k ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"}`}
+              onClick={() => fileInput.current?.click()}
+              disabled={uploadImage.isPending}
+              className="size-20 rounded-md border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-[10px] text-muted-foreground gap-1"
             >
-              <img src={productImage(k)} alt={k} className="w-full h-full object-cover" />
+              <Upload className="size-4" />
+              {uploadImage.isPending ? "Uploading…" : "Add image"}
             </button>
-          ))}
+          )}
         </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) uploadImage.mutate(f);
+            e.target.value = "";
+          }}
+        />
+        {imageIds.length === 0 && (
+          <p className="text-[10px] text-yellow-400">
+            Add at least one image — listings with photos sell faster.
+          </p>
+        )}
       </div>
 
       <h2 className="text-sm font-bold flex items-center gap-2 pt-2">
@@ -327,7 +526,7 @@ function ProductForm() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Min qty</Label>
           <Input
@@ -347,19 +546,11 @@ function ProductForm() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Region</Label>
-          <Input
-            value={form.region}
-            onChange={(e) => setForm({ ...form, region: e.target.value })}
-            placeholder="Global"
-          />
-        </div>
-        <div className="space-y-1.5">
           <Label className="text-xs">Platform</Label>
           <Input
             value={form.platform}
             onChange={(e) => setForm({ ...form, platform: e.target.value })}
-            placeholder="PC"
+            placeholder="PC / PS5 / iOS"
           />
         </div>
       </div>
@@ -431,7 +622,7 @@ function ProductForm() {
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">⏱ Listing expiration</Label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {[0, 7, 15, 30].map((d) => (
               <button
                 key={d}
@@ -453,7 +644,7 @@ function ProductForm() {
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">🛡 Insurance program</Label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {[0, 7, 15, 30].map((d) => (
               <button
                 key={d}
