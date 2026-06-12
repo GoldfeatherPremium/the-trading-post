@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Copy, ShieldCheck, Timer } from "lucide-react";
+import { SellerBadge } from "@/components/seller-badge";
 import { cancelUnpaidOrder, getPayment, simulatePaymentSent } from "@/lib/api/orders";
 import { payWithWallet } from "@/lib/api/extras";
 import { getWalletData } from "@/lib/api/seller";
