@@ -8,6 +8,7 @@ import { createOrder } from "@/lib/api/orders";
 import { startProductConversation } from "@/lib/api/chat";
 import { checkCoupon } from "@/lib/api/extras";
 import { FavoriteButton, ProductCard } from "@/components/product-card";
+import { SellerBadge } from "@/components/seller-badge";
 import { useMe } from "@/hooks/use-me";
 import { PageShell } from "@/components/shell";
 import { productImage } from "@/lib/images";
