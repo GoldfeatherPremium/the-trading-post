@@ -18,6 +18,18 @@ export interface PublicSeller {
   trust_score: number;
 }
 
+export interface StoreProfile extends PublicSeller {
+  store_banner_url: string | null;
+  store_logo_url: string | null;
+  store_description: string | null;
+  store_socials: Record<string, string>;
+  store_announcement: string | null;
+  avg_response_minutes: number;
+  avg_delivery_minutes: number;
+  refund_count: number;
+  dispute_count: number;
+}
+
 export interface PublicProduct {
   id: string;
   title: string;
