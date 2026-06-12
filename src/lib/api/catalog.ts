@@ -304,6 +304,67 @@ export const getRelatedProducts = createServerFn({ method: "GET" })
     return { items: rows.map(mapProduct) };
   });
 
+/**
+ * Personalized "For You" recommendations. Builds a signal set from the user's
+ * favorites + past orders (categories & catalog items they've engaged with)
+ * and surfaces highly-rated active listings in those buckets, excluding
+ * products they already bought. Falls back to empty when there's no signal —
+ * the caller decides whether to hide or show a generic carousel instead.
+ */
+export const getMyRecommendations = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({ limit: z.number().int().min(1).max(24).default(8) }).default({ limit: 8 }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const { currentUser } = await import("../server/auth.server");
+    const user = await currentUser();
+    if (!user) return { items: [] as PublicProduct[] };
+    const signals = await q<{ category_id: string | null; item_id: string | null; product_id: string }>(
+      `select p.category_id, p.item_id, p.id as product_id
+         from favorites f join products p on p.id = f.product_id where f.user_id = ?
+       union all
+       select p.category_id, p.item_id, p.id as product_id
+         from orders o join products p on p.id = o.product_id where o.buyer_id = ?`,
+      [user.id, user.id],
+    );
+    if (signals.length === 0) return { items: [] as PublicProduct[] };
+    const cats = Array.from(new Set(signals.map((s) => s.category_id).filter(Boolean))) as string[];
+    const items = Array.from(new Set(signals.map((s) => s.item_id).filter(Boolean))) as string[];
+    const owned = Array.from(new Set(signals.map((s) => s.product_id)));
+    const where: string[] = [`p.status = 'active'`];
+    const params: Array<string | number> = [];
+    if (owned.length) {
+      where.push(`p.id not in (${owned.map(() => "?").join(",")})`);
+      params.push(...owned);
+    }
+    const orParts: string[] = [];
+    if (items.length) {
+      orParts.push(`p.item_id in (${items.map(() => "?").join(",")})`);
+      params.push(...items);
+    }
+    if (cats.length) {
+      orParts.push(`p.category_id in (${cats.map(() => "?").join(",")})`);
+      params.push(...cats);
+    }
+    if (orParts.length === 0) return { items: [] as PublicProduct[] };
+    where.push(`(${orParts.join(" or ")})`);
+    // Weight: same catalog item > same category, then trust, then sales.
+    const itemBoost = items.length
+      ? `case when p.item_id in (${items.map(() => "?").join(",")}) then 0 else 1 end`
+      : `1`;
+    if (items.length) params.push(...items);
+    params.push(data.limit);
+    const rows = await q(
+      `${productSelect} where ${where.join(" and ")}
+         order by ${itemBoost}, u.trust_score desc, p.sold_count desc, p.created_at desc
+         limit ?`,
+      params,
+    );
+    return { items: rows.map(mapProduct) };
+  });
+
+
 export const getProduct = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {

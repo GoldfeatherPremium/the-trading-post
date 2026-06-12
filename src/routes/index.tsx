@@ -11,13 +11,15 @@ import {
   ArrowUpRight,
   History,
 } from "lucide-react";
-import { getHomeData } from "@/lib/api/catalog";
+import { getHomeData, getMyRecommendations } from "@/lib/api/catalog";
+import { getFollowedFeed } from "@/lib/api/follows";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { usdtShort, timeAgo } from "@/lib/format";
 import { productImage } from "@/lib/images";
 import { SmartSearch } from "@/components/smart-search";
 import { VerificationBadge, TrustScore } from "@/components/seller-badge";
+import { useMe } from "@/hooks/use-me";
 
 const SITE = "https://warm-trade-space.lovable.app";
 
@@ -45,7 +47,20 @@ export const Route = createFileRoute("/")({
 type RecentItem = { slug: string; title: string; image_key: string | null; price_cents: number };
 
 function Index() {
+  const { me } = useMe();
   const { data } = useQuery({ queryKey: ["home"], queryFn: () => getHomeData() });
+  const { data: recs } = useQuery({
+    queryKey: ["recs", me?.id ?? "anon"],
+    queryFn: () => getMyRecommendations({ data: { limit: 8 } }),
+    enabled: !!me,
+    staleTime: 60_000,
+  });
+  const { data: feed } = useQuery({
+    queryKey: ["followedFeed", me?.id ?? "anon"],
+    queryFn: () => getFollowedFeed(),
+    enabled: !!me,
+    staleTime: 60_000,
+  });
   const [recent, setRecent] = useState<RecentItem[]>([]);
   useEffect(() => {
     try {
@@ -250,6 +265,83 @@ function Index() {
               </Link>
             ))}
           </div>
+        </section>
+      )}
+
+
+      {/* ============ FOR YOU (logged-in personalization) ============ */}
+      {me && recs && recs.items.length > 0 && (
+        <section className="pt-10">
+          <SectionHeader
+            label="JUST FOR YOU"
+            title="Picked based on what you like"
+            icon={<Sparkles />}
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {recs.items.slice(0, 8).map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ============ FROM SELLERS YOU FOLLOW ============ */}
+      {me && feed && feed.sellers.length > 0 && (
+        <section className="pt-10">
+          <SectionHeader
+            label="FOLLOWING"
+            title="From sellers you follow"
+            icon={<Star />}
+          />
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-3">
+            {feed.sellers.slice(0, 12).map((s) => (
+              <Link
+                key={s.id}
+                to="/s/$username"
+                params={{ username: s.username }}
+                className="shrink-0 flex items-center gap-2 bg-card border border-border rounded-full pl-1 pr-3 py-1 hover:border-primary/40"
+              >
+                <span className="size-7 rounded-full bg-primary/15 border border-primary/40 grid place-items-center text-[10px] font-bold text-primary uppercase">
+                  {s.username.slice(0, 2)}
+                </span>
+                <span className="text-xs font-bold">{s.username}</span>
+                <VerificationBadge tier={s.verification_tier as never} size="xs" showLabel={false} />
+              </Link>
+            ))}
+          </div>
+          {feed.newListings.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {feed.newListings.slice(0, 8).map((p) => (
+                <Link
+                  key={p.id}
+                  to="/p/$slug"
+                  params={{ slug: p.slug }}
+                  className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50"
+                >
+                  <div className="aspect-[16/10] bg-secondary overflow-hidden">
+                    <img
+                      src={productImage(p.image_key)}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[11px] font-bold line-clamp-1">{p.title}</p>
+                    <p className="text-[10px] text-muted-foreground line-clamp-1">
+                      {p.seller_username} · {timeAgo(p.created_at)}
+                    </p>
+                    <p className="text-[11px] font-mono text-accent mt-1">
+                      {usdtShort(p.price_cents)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No new listings yet from sellers you follow.
+            </p>
+          )}
         </section>
       )}
 
