@@ -7,6 +7,7 @@ import { requireSeller, requireStaff, requireUser } from "../server/auth.server"
 import {
   LEVEL_META,
   TIER_META,
+  getTrustHistory,
   recomputeSellerTrust,
   type VerificationTier,
 } from "../server/trust.server";
