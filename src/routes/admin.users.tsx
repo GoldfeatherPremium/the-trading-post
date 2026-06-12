@@ -197,9 +197,62 @@ function AdminUsers() {
                 </Button>
               )}
             </div>
+            <RiskCheck userId={u.id as string} />
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function RiskCheck({ userId }: { userId: string }) {
+  const [result, setResult] = useState<{
+    riskScore: number;
+    band: string;
+    reasons: string[];
+    recommendation: string;
+    ageDays: number;
+  } | null>(null);
+  const run = useMutation({
+    mutationFn: () => aiRiskScoreUser({ data: { userId } }),
+    onSuccess: (r) => setResult(r),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const bandColor =
+    result?.band === "high"
+      ? "text-destructive"
+      : result?.band === "medium"
+        ? "text-yellow-400"
+        : "text-accent";
+  return (
+    <div className="border-t border-border pt-2 mt-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-[10px]"
+          onClick={() => run.mutate()}
+          disabled={run.isPending}
+        >
+          <Sparkles className="size-3 mr-1" />
+          {run.isPending ? "Scoring…" : result ? "Re-score" : "AI fraud check"}
+        </Button>
+        {result && (
+          <span className={`text-[10px] font-bold ${bandColor}`}>
+            Risk {result.riskScore}/100 · {result.band.toUpperCase()}
+          </span>
+        )}
+      </div>
+      {result && (
+        <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
+          <ul className="list-disc ml-4">
+            {result.reasons.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+          <p className="text-foreground">→ {result.recommendation}</p>
+        </div>
+      )}
     </div>
   );
 }
