@@ -312,7 +312,7 @@ export function releaseOrder(orderId: string, note?: string): Promise<void> {
     );
     // Affiliate commission, if buyer was attributed to a referral.
     try {
-      const { maybePayoutReferralForOrder } = await import("../api/growth");
+      const { maybePayoutReferralForOrder } = await import("./growth.server");
       await maybePayoutReferralForOrder(o.buyer_id, orderId, o.total_cents);
     } catch (e) {
       console.error("[affiliate] payout failed", (e as Error)?.message);

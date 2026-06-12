@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { recordReferralClick } from "@/lib/api/growth";
+import { recordReferralClick } from "@/lib/server/growth.server";
 import { appContext } from "@/lib/server/app.server";
 
 const trackClick = createServerFn({ method: "POST" })
