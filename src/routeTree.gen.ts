@@ -65,6 +65,7 @@ import { Route as AccountFollowingRouteImport } from './routes/account.following
 import { Route as AccountAffiliateRouteImport } from './routes/account.affiliate'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
 import { Route as ApiPublicImgIdRouteImport } from './routes/api/public/img.$id'
+import { Route as ApiPublicCronFollowDigestRouteImport } from './routes/api/public/cron/follow-digest'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
@@ -346,6 +347,12 @@ const ApiPublicImgIdRoute = ApiPublicImgIdRouteImport.update({
   path: '/api/public/img/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronFollowDigestRoute =
+  ApiPublicCronFollowDigestRouteImport.update({
+    id: '/api/public/cron/follow-digest',
+    path: '/api/public/cron/follow-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -403,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/orders/': typeof OrdersIndexRoute
   '/seller/': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/cron/follow-digest': typeof ApiPublicCronFollowDigestRoute
   '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRoutesByTo {
@@ -459,6 +467,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersIndexRoute
   '/seller': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/cron/follow-digest': typeof ApiPublicCronFollowDigestRoute
   '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRoutesById {
@@ -518,6 +527,7 @@ export interface FileRoutesById {
   '/orders/': typeof OrdersIndexRoute
   '/seller/': typeof SellerIndexRoute
   '/seller/stock/$productId': typeof SellerStockProductIdRoute
+  '/api/public/cron/follow-digest': typeof ApiPublicCronFollowDigestRoute
   '/api/public/img/$id': typeof ApiPublicImgIdRoute
 }
 export interface FileRouteTypes {
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/seller/'
     | '/seller/stock/$productId'
+    | '/api/public/cron/follow-digest'
     | '/api/public/img/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -634,6 +645,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/seller'
     | '/seller/stock/$productId'
+    | '/api/public/cron/follow-digest'
     | '/api/public/img/$id'
   id:
     | '__root__'
@@ -692,6 +704,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/seller/'
     | '/seller/stock/$productId'
+    | '/api/public/cron/follow-digest'
     | '/api/public/img/$id'
   fileRoutesById: FileRoutesById
 }
@@ -717,6 +730,7 @@ export interface RootRouteChildren {
   RCodeRoute: typeof RCodeRoute
   SUsernameRoute: typeof SUsernameRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
+  ApiPublicCronFollowDigestRoute: typeof ApiPublicCronFollowDigestRoute
   ApiPublicImgIdRoute: typeof ApiPublicImgIdRoute
 }
 
@@ -1114,6 +1128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicImgIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/follow-digest': {
+      id: '/api/public/cron/follow-digest'
+      path: '/api/public/cron/follow-digest'
+      fullPath: '/api/public/cron/follow-digest'
+      preLoaderRoute: typeof ApiPublicCronFollowDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1243,6 +1264,7 @@ const rootRouteChildren: RootRouteChildren = {
   RCodeRoute: RCodeRoute,
   SUsernameRoute: SUsernameRoute,
   OrdersIndexRoute: OrdersIndexRoute,
+  ApiPublicCronFollowDigestRoute: ApiPublicCronFollowDigestRoute,
   ApiPublicImgIdRoute: ApiPublicImgIdRoute,
 }
 export const routeTree = rootRouteImport
