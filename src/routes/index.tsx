@@ -106,17 +106,30 @@ function Index() {
             </div>
           </div>
 
-          {/* Stats stack */}
+          {/* Stats stack — live marketplace counters */}
           <StatTile
-            label="Active Listings"
-            value={(data?.trending.length ?? 0) + (data?.newest.length ?? 0) + "+"}
-            icon={<Sparkles className="size-4" />}
+            label="Active Sellers"
+            value={(data?.stats.sellers ?? 0).toLocaleString()}
+            icon={<Star className="size-4" />}
             className="col-span-3 lg:col-span-2"
           />
           <StatTile
-            label="Trusted Sellers"
-            value={(data?.topSellers.length ?? 0).toString()}
-            icon={<Star className="size-4" />}
+            label="Live Listings"
+            value={(data?.stats.products ?? 0).toLocaleString()}
+            icon={<Sparkles className="size-4" />}
+            className="col-span-3 lg:col-span-2"
+            accent
+          />
+          <StatTile
+            label="Orders Done"
+            value={(data?.stats.orders ?? 0).toLocaleString()}
+            icon={<ShieldCheck className="size-4" />}
+            className="col-span-3 lg:col-span-2"
+          />
+          <StatTile
+            label="Reviews"
+            value={(data?.stats.reviews ?? 0).toLocaleString()}
+            icon={<TrendingUp className="size-4" />}
             className="col-span-3 lg:col-span-2"
             accent
           />

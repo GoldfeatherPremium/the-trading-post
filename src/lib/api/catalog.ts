@@ -18,6 +18,18 @@ export interface PublicSeller {
   trust_score: number;
 }
 
+export interface StoreProfile extends PublicSeller {
+  store_banner_url: string | null;
+  store_logo_url: string | null;
+  store_description: string | null;
+  store_socials: Record<string, string>;
+  store_announcement: string | null;
+  avg_response_minutes: number;
+  avg_delivery_minutes: number;
+  refund_count: number;
+  dispute_count: number;
+}
+
 export interface PublicProduct {
   id: string;
   title: string;
@@ -100,7 +112,7 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
 
 export const getHomeData = createServerFn({ method: "GET" }).handler(async () => {
   await appContext();
-  const [categories, trendingRows, newestRows, topSellers, recentSales] = await Promise.all([
+  const [categories, trendingRows, newestRows, topSellers, recentSales, stats] = await Promise.all([
     q<{
       id: string;
       name: string;
@@ -126,10 +138,24 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async () =>
        from orders o join users u on u.id = o.buyer_id
        where o.status in ('delivered','completed','released') order by o.created_at desc limit 8`,
     ),
+    q1<{ sellers: number; products: number; orders: number; reviews: number }>(
+      `select
+         (select count(*) from users where seller_status = 'approved' and is_banned = 0) as sellers,
+         (select count(*) from products where status = 'active') as products,
+         (select count(*) from orders where status in ('delivered','completed','released')) as orders,
+         (select count(*) from reviews) as reviews`,
+    ),
   ]);
   const trending = trendingRows.map(mapProduct);
   const newest = newestRows.map(mapProduct);
-  return { categories, trending, newest, topSellers, recentSales };
+  return {
+    categories,
+    trending,
+    newest,
+    topSellers,
+    recentSales,
+    stats: stats ?? { sellers: 0, products: 0, orders: 0, reviews: 0 },
+  };
 });
 
 export const browseProducts = createServerFn({ method: "GET" })
@@ -248,13 +274,22 @@ export const getSellerStore = createServerFn({ method: "GET" })
   .inputValidator(z.object({ username: z.string() }))
   .handler(async ({ data }) => {
     await appContext();
-    const seller = await q1<PublicSeller>(
+    const sellerRow = await q1<StoreProfile & { store_socials: unknown }>(
       `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at,
-              verification_tier, trust_score
+              verification_tier, trust_score, store_banner_url, store_logo_url, store_description,
+              store_socials, store_announcement, avg_response_minutes, avg_delivery_minutes,
+              refund_count, dispute_count
        from users where lower(username) = lower(?) and seller_status = 'approved' and is_banned = 0`,
       [data.username],
     );
-    if (!seller) return { seller: null, products: [], reviews: [] };
+    if (!sellerRow) return { seller: null, products: [], reviews: [] };
+    const seller: StoreProfile = {
+      ...sellerRow,
+      store_socials:
+        typeof sellerRow.store_socials === "string"
+          ? JSON.parse(sellerRow.store_socials)
+          : ((sellerRow.store_socials as Record<string, string> | null) ?? {}),
+    };
     const [productRows, reviews] = await Promise.all([
       q(
         `${productSelect} where p.seller_id = ? and p.status in ('active','out_of_stock') order by p.sold_count desc`,

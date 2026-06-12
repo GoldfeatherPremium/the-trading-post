@@ -6,7 +6,7 @@ import { listFavoriteIds, toggleFavorite } from "@/lib/api/extras";
 import { useMe } from "@/hooks/use-me";
 import { productImage } from "@/lib/images";
 import { usdtShort } from "@/lib/format";
-import { VerificationBadge } from "./seller-badge";
+import { VerificationBadge, LevelBadge, TrustScore } from "./seller-badge";
 
 export function useFavorites() {
   const { me } = useMe();
@@ -90,17 +90,21 @@ export function ProductCard({ product }: { product: PublicProduct }) {
         <h3 className="text-xs font-bold leading-tight line-clamp-2">{product.title}</h3>
         <p className="text-[10px] text-muted-foreground">{product.category_name}</p>
         <div className="mt-auto flex items-end justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
               <span className="size-1.5 rounded-full bg-accent inline-block" />
-              {product.seller.username}
+              <span className="truncate">{product.seller.username}</span>
               <VerificationBadge tier={product.seller.verification_tier} size="xs" showLabel={false} />
               <span className="flex items-center gap-0.5 text-yellow-400">
                 <Star className="size-2.5 fill-current" />
                 {product.seller.rating > 0 ? product.seller.rating.toFixed(1) : "new"}
               </span>
             </div>
-            <p className="text-[9px] text-muted-foreground">{product.sold_count} sold</p>
+            <div className="flex items-center gap-1 flex-wrap">
+              <LevelBadge level={product.seller.seller_level} size="xs" />
+              {product.seller.trust_score > 0 && <TrustScore score={product.seller.trust_score} />}
+              <span className="text-[9px] text-muted-foreground">· {product.sold_count} sold</span>
+            </div>
           </div>
           <span className="text-accent font-mono text-sm whitespace-nowrap">
             {usdtShort(product.price_cents)}

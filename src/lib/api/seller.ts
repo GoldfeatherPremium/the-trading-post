@@ -730,3 +730,79 @@ export const deleteProductImage = createServerFn({ method: "POST" })
     await run(`delete from product_images where id = ? and seller_id = ?`, [data.id, user.id]);
     return { ok: true };
   });
+
+// ---------------------------------------------------------------------------
+// Storefront branding (banner, logo, description, socials, announcement)
+// ---------------------------------------------------------------------------
+export const getMyStorefront = createServerFn({ method: "GET" }).handler(async () => {
+  await appContext();
+  const user = await requireSeller();
+  const row = await q1<{
+    store_banner_url: string | null;
+    store_logo_url: string | null;
+    store_description: string | null;
+    store_socials: unknown;
+    store_announcement: string | null;
+  }>(
+    `select store_banner_url, store_logo_url, store_description, store_socials, store_announcement
+     from users where id = ?`,
+    [user.id],
+  );
+  const socials =
+    typeof row?.store_socials === "string"
+      ? JSON.parse(row.store_socials)
+      : ((row?.store_socials as Record<string, string>) ?? {});
+  return {
+    bannerUrl: row?.store_banner_url ?? "",
+    logoUrl: row?.store_logo_url ?? "",
+    description: row?.store_description ?? "",
+    announcement: row?.store_announcement ?? "",
+    socials: socials as Record<string, string>,
+    username: user.username,
+  };
+});
+
+const URL_OPT = z.string().trim().max(500).url().optional().or(z.literal(""));
+
+export const saveStorefront = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      bannerUrl: URL_OPT,
+      logoUrl: URL_OPT,
+      description: z.string().trim().max(1500).optional(),
+      announcement: z.string().trim().max(280).optional(),
+      socials: z
+        .object({
+          website: URL_OPT,
+          twitter: URL_OPT,
+          discord: URL_OPT,
+          telegram: URL_OPT,
+          youtube: URL_OPT,
+        })
+        .partial()
+        .default({}),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    const clean: Record<string, string> = {};
+    for (const [k, v] of Object.entries(data.socials ?? {})) {
+      if (typeof v === "string" && v.trim()) clean[k] = v.trim();
+    }
+    await run(
+      `update users set store_banner_url = ?, store_logo_url = ?, store_description = ?,
+                        store_announcement = ?, store_socials = ?::jsonb
+       where id = ?`,
+      [
+        data.bannerUrl?.trim() || null,
+        data.logoUrl?.trim() || null,
+        data.description?.trim() || null,
+        data.announcement?.trim() || null,
+        JSON.stringify(clean),
+        user.id,
+      ],
+    );
+    await audit(user.id, "storefront.update", "user", user.id);
+    return { ok: true };
+  });
