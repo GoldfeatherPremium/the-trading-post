@@ -122,6 +122,24 @@ export function confirmPayment(orderId: string): Promise<void> {
       `Your payment for ${o.order_no} was confirmed.`,
       `/orders/${orderId}`,
     );
+    if (holdRisk) {
+      await systemMessage(
+        convId,
+        `Order ${o.order_no} placed on review hold by fraud-engine (risk ${risk.score}/100).`,
+      );
+      const staff = await q<{ id: string }>(
+        `select id from users where role in ('admin','support')`,
+      );
+      for (const s of staff) {
+        await notify(
+          s.id,
+          "risk_hold",
+          "Order auto-held by fraud-engine",
+          `${o.order_no} · risk ${risk.score} · ${risk.reasons.slice(0, 1).join("")}`,
+          `/admin/risk`,
+        );
+      }
+    }
 
     if (o.delivery_type === "auto") {
       await deliverAutoStock(orderId);
