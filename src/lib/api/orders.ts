@@ -62,6 +62,8 @@ export const createOrder = createServerFn({ method: "POST" })
       cat_commission: number;
       default_warranty_hours: number;
       required_info: string | null;
+      sale_price_cents: number | null;
+      sale_ends_at: number | null;
     }>(
       `select p.*, c.commission_pct as cat_commission, c.default_warranty_hours, c.risk_tier
        from products p join categories c on c.id = p.category_id where p.id = ?`,
@@ -114,7 +116,11 @@ export const createOrder = createServerFn({ method: "POST" })
     ))!.c;
     if (openUnpaid >= 5) fail("You have too many unpaid orders. Pay or cancel them first.");
 
-    let unitPrice = p!.price_cents;
+    const saleActive =
+      p!.sale_price_cents != null &&
+      p!.sale_price_cents > 0 &&
+      (!p!.sale_ends_at || p!.sale_ends_at > now());
+    let unitPrice = saleActive ? p!.sale_price_cents! : p!.price_cents;
     let titleSnapshot = p!.title;
     let variantTitle: string | null = null;
     if (data.variantId) {
@@ -154,7 +160,10 @@ export const createOrder = createServerFn({ method: "POST" })
       let discount = 0;
       let couponCode: string | null = null;
       if (data.couponCode?.trim()) {
-        const coupon = await validateCoupon(data.couponCode, grossTotal);
+        const coupon = await validateCoupon(data.couponCode, grossTotal, {
+          sellerId: p!.seller_id,
+          productId: p!.id,
+        });
         discount = Math.round((grossTotal * coupon.pct_off) / 100);
         couponCode = coupon.code;
         await run(`update coupons set used_count = used_count + 1 where id = ?`, [coupon.id]);
