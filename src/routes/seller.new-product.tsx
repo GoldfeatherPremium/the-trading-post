@@ -52,6 +52,10 @@ function ProductForm() {
   const [itemId, setItemId] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestName, setSuggestName] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+  const [aiTips, setAiTips] = useState<string[]>([]);
   const { data: catalog } = useQuery({
     queryKey: ["catalogItems"],
     queryFn: () => listCatalogItems(),
@@ -62,6 +66,38 @@ function ProductForm() {
       toast.success("Request sent — admins will review it and you'll get a notification.");
       setSuggesting(false);
       setSuggestName("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const selectedCatName = (id: string) => home?.categories.find((c) => c.id === id)?.name;
+  const draft = useMutation({
+    mutationFn: () =>
+      aiDraftListing({
+        data: { brief: aiBrief, categoryHint: selectedCatName(form.categoryId) },
+      }),
+    onSuccess: (out) => {
+      setForm((f) => ({ ...f, title: out.title, description: out.description }));
+      setAiWarnings(out.warnings ?? []);
+      setAiTips(out.tags ?? []);
+      setAiOpen(false);
+      if (out.warnings && out.warnings.length > 0) {
+        toast.warning("Draft generated with warnings — review before submitting.");
+      } else {
+        toast.success("Draft generated — review and edit before submitting.");
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const polish = useMutation({
+    mutationFn: () =>
+      aiPolishDescription({
+        data: { title: form.title, description: form.description },
+      }),
+    onSuccess: (out) => {
+      setForm((f) => ({ ...f, description: out.description }));
+      setAiTips(out.suggestions ?? []);
+      toast.success("Description polished.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
