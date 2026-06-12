@@ -16,6 +16,8 @@ export interface PublicSeller {
   created_at: number;
   verification_tier: "unverified" | "verified" | "business" | "premium";
   trust_score: number;
+  refund_count: number;
+  dispute_count: number;
 }
 
 export interface StoreProfile extends PublicSeller {
@@ -70,6 +72,7 @@ const productSelect = `
          u.rating_count as s_rating_count, u.total_sales as s_total_sales,
          u.completion_rate as s_completion, u.vacation_mode as s_vacation, u.created_at as s_created,
          u.verification_tier as s_verification, u.trust_score as s_trust,
+         u.refund_count as s_refunds, u.dispute_count as s_disputes,
          p.item_id, ci.name as item_name, p.insurance_days, p.expires_at
   from products p
   join categories c on c.id = p.category_id
@@ -89,6 +92,8 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
     s_created,
     s_verification,
     s_trust,
+    s_refunds,
+    s_disputes,
     ...rest
   } = r;
   return {
@@ -106,6 +111,8 @@ function mapProduct(r: Record<string, unknown>): PublicProduct {
       verification_tier:
         (s_verification as PublicSeller["verification_tier"] | null) ?? "unverified",
       trust_score: (s_trust as number | null) ?? 0,
+      refund_count: (s_refunds as number | null) ?? 0,
+      dispute_count: (s_disputes as number | null) ?? 0,
     },
   };
 }

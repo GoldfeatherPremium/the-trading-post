@@ -5,6 +5,7 @@ import { getSellerStore } from "@/lib/api/catalog";
 import { PageShell } from "@/components/shell";
 import { ProductCard } from "@/components/product-card";
 import { SellerBadge } from "@/components/seller-badge";
+import { TrustSparkline } from "@/components/trust-sparkline";
 import { timeAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/s/$username")({
@@ -75,6 +76,7 @@ function SellerStorePage() {
             <h1 className="font-display text-2xl sm:text-3xl">{s.username}</h1>
             <div className="mt-2 flex items-center gap-1.5 flex-wrap">
               <SellerBadge tier={s.verification_tier} level={s.seller_level} score={s.trust_score} />
+              <TrustSparkline userId={s.id} currentScore={s.trust_score} />
               {s.vacation_mode ? (
                 <span className="text-[10px] bg-yellow-500/15 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/40 font-bold">
                   ON VACATION

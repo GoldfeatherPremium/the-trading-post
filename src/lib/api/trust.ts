@@ -7,6 +7,7 @@ import { requireSeller, requireStaff, requireUser } from "../server/auth.server"
 import {
   LEVEL_META,
   TIER_META,
+  getTrustHistory,
   recomputeSellerTrust,
   type VerificationTier,
 } from "../server/trust.server";
@@ -184,4 +185,13 @@ export const getSellerTrust = createServerFn({ method: "POST" })
       [data.userId],
     );
     return { trust: u ?? null };
+  });
+
+/** Public trust score history for a seller — powers the storefront sparkline. */
+export const getSellerTrustHistory = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ userId: z.string(), days: z.number().int().min(7).max(180).default(30) }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const points = await getTrustHistory(data.userId, data.days);
+    return { points };
   });

@@ -8,6 +8,7 @@ import { createOrder } from "@/lib/api/orders";
 import { startProductConversation } from "@/lib/api/chat";
 import { checkCoupon } from "@/lib/api/extras";
 import { FavoriteButton, ProductCard } from "@/components/product-card";
+import { SellerBadge } from "@/components/seller-badge";
 import { useMe } from "@/hooks/use-me";
 import { PageShell } from "@/components/shell";
 import { productImage } from "@/lib/images";
@@ -457,34 +458,56 @@ function ProductPage() {
           <Link
             to="/s/$username"
             params={{ username: p.seller.username }}
-            className="bg-card border border-border rounded-lg p-4 flex items-center gap-3 hover:border-primary/50"
+            className="bg-card border border-border rounded-lg p-4 block hover:border-primary/50 space-y-3"
           >
-            <div className="size-11 rounded-full bg-primary/20 border border-primary/40 grid place-items-center text-sm font-bold text-primary uppercase">
-              {p.seller.username.slice(0, 2)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate flex items-center gap-1.5">
-                {p.seller.username}
-                <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-bold">
-                  Lv.{p.seller.seller_level}
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-full bg-primary/20 border border-primary/40 grid place-items-center text-sm font-bold text-primary uppercase">
+                {p.seller.username.slice(0, 2)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{p.seller.username}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  ★{" "}
+                  {p.seller.rating > 0
+                    ? `${p.seller.rating.toFixed(1)} (${p.seller.rating_count})`
+                    : "new seller"}{" "}
+                  · {p.seller.total_sales.toLocaleString()} sales
+                </p>
+              </div>
+              {p.seller.vacation_mode ? (
+                <span className="text-[9px] bg-yellow-500/15 text-yellow-400 px-2 py-1 rounded font-bold">
+                  AWAY
                 </span>
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                ★{" "}
-                {p.seller.rating > 0
-                  ? `${p.seller.rating.toFixed(1)} (${p.seller.rating_count})`
-                  : "new seller"}{" "}
-                · {p.seller.total_sales.toLocaleString()} sales ·{" "}
-                {p.seller.completion_rate.toFixed(0)}% completion
-              </p>
+              ) : (
+                <span className="size-2 rounded-full bg-accent" title="online" />
+              )}
             </div>
-            {p.seller.vacation_mode ? (
-              <span className="text-[9px] bg-yellow-500/15 text-yellow-400 px-2 py-1 rounded font-bold">
-                AWAY
-              </span>
-            ) : (
-              <span className="size-2 rounded-full bg-accent" title="online" />
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <SellerBadge
+                tier={p.seller.verification_tier}
+                level={p.seller.seller_level}
+                score={p.seller.trust_score}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <SellerStat label="Completion" value={`${p.seller.completion_rate.toFixed(0)}%`} />
+              <SellerStat
+                label="Refunds"
+                value={
+                  p.seller.total_sales > 0
+                    ? `${((p.seller.refund_count / p.seller.total_sales) * 100).toFixed(1)}%`
+                    : "—"
+                }
+              />
+              <SellerStat
+                label="Disputes"
+                value={
+                  p.seller.total_sales > 0
+                    ? `${((p.seller.dispute_count / p.seller.total_sales) * 100).toFixed(1)}%`
+                    : "—"
+                }
+              />
+            </div>
           </Link>
         </div>
       </div>
@@ -514,6 +537,18 @@ function RelatedProducts({ productId }: { productId: string }) {
     </section>
   );
 }
+
+function SellerStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-secondary/60 rounded-md px-2 py-1.5 text-center">
+      <p className="text-[8px] tracking-widest font-bold text-muted-foreground">
+        {label.toUpperCase()}
+      </p>
+      <p className="text-[11px] font-mono mt-0.5">{value}</p>
+    </div>
+  );
+}
+
 
 function Sparkle() {
   return <Star className="size-4 text-primary" />;
