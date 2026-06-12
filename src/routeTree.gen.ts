@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SellerRouteImport } from './routes/seller'
 import { Route as SellRouteImport } from './routes/sell'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as FavoritesRouteImport } from './routes/favorites'
@@ -64,6 +66,11 @@ const WalletRoute = WalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SellerRoute = SellerRouteImport.update({
   id: '/seller',
   path: '/seller',
@@ -72,6 +79,11 @@ const SellerRoute = SellerRouteImport.update({
 const SellRoute = SellRouteImport.update({
   id: '/sell',
   path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -316,8 +328,10 @@ export interface FileRoutesByFullPath {
   '/favorites': typeof FavoritesRoute
   '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/wallet': typeof WalletRoute
   '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -366,7 +380,9 @@ export interface FileRoutesByTo {
   '/favorites': typeof FavoritesRoute
   '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sell': typeof SellRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/wallet': typeof WalletRoute
   '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -417,8 +433,10 @@ export interface FileRoutesById {
   '/favorites': typeof FavoritesRoute
   '/menu': typeof MenuRoute
   '/notifications': typeof NotificationsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sell': typeof SellRoute
   '/seller': typeof SellerRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/wallet': typeof WalletRoute
   '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -470,8 +488,10 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/menu'
     | '/notifications'
+    | '/robots.txt'
     | '/sell'
     | '/seller'
+    | '/sitemap.xml'
     | '/wallet'
     | '/account/subscriptions'
     | '/admin/analytics'
@@ -520,7 +540,9 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/menu'
     | '/notifications'
+    | '/robots.txt'
     | '/sell'
+    | '/sitemap.xml'
     | '/wallet'
     | '/account/subscriptions'
     | '/admin/analytics'
@@ -570,8 +592,10 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/menu'
     | '/notifications'
+    | '/robots.txt'
     | '/sell'
     | '/seller'
+    | '/sitemap.xml'
     | '/wallet'
     | '/account/subscriptions'
     | '/admin/analytics'
@@ -622,8 +646,10 @@ export interface RootRouteChildren {
   FavoritesRoute: typeof FavoritesRoute
   MenuRoute: typeof MenuRoute
   NotificationsRoute: typeof NotificationsRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SellRoute: typeof SellRoute
   SellerRoute: typeof SellerRouteWithChildren
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   WalletRoute: typeof WalletRoute
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
   PSlugRoute: typeof PSlugRoute
@@ -642,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/seller': {
       id: '/seller'
       path: '/seller'
@@ -654,6 +687,13 @@ declare module '@tanstack/react-router' {
       path: '/sell'
       fullPath: '/sell'
       preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -1088,8 +1128,10 @@ const rootRouteChildren: RootRouteChildren = {
   FavoritesRoute: FavoritesRoute,
   MenuRoute: MenuRoute,
   NotificationsRoute: NotificationsRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SellRoute: SellRoute,
   SellerRoute: SellerRouteWithChildren,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   WalletRoute: WalletRoute,
   OrdersOrderIdRoute: OrdersOrderIdRoute,
   PSlugRoute: PSlugRoute,
