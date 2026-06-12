@@ -854,6 +854,44 @@ async function migrate(e: Engine): Promise<void> {
     .exec(`create index if not exists idx_follows_user on seller_follows(user_id, created_at)`)
     .catch(() => {});
 
+  // --- Phase 14: Fraud rules engine — risk events recorded per order ---
+  await e
+    .exec(
+      `create table if not exists risk_events (
+        id ${dialect === "postgres" ? "bigint generated always as identity primary key" : "integer primary key autoincrement"},
+        user_id text,
+        seller_id text,
+        order_id text,
+        kind text not null,
+        score integer not null,
+        band text not null,
+        reasons text not null,
+        action text not null,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_risk_user on risk_events(user_id, created_at)`)
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_risk_order on risk_events(order_id)`)
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_risk_created on risk_events(created_at)`)
+    .catch(() => {});
+
+  // --- Phase 14: Follow digest watermark (per-user last-sent) ---
+  await e
+    .exec(
+      `create table if not exists follow_digest_state (
+        user_id text primary key,
+        last_sent_at ${big} not null,
+        last_count integer not null default 0
+      )`,
+    )
+    .catch(() => {});
+
   // seed a sane default set if empty
   const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
   if (!seeded[0] || Number(seeded[0].c) === 0) {
