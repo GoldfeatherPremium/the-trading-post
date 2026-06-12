@@ -27,9 +27,38 @@ const searchSchema = z.object({
   page: z.number().int().min(1).optional(),
 });
 
+const SITE = "https://warm-trade-space.lovable.app";
+
 export const Route = createFileRoute("/browse")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "Browse — X-VAULT" }] }),
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ deps }) => ({ search: deps.search }),
+  head: ({ loaderData }) => {
+    const s = (loaderData?.search ?? {}) as z.infer<typeof searchSchema>;
+    const parts: string[] = [];
+    if (s.q) parts.push(`"${s.q}"`);
+    if (s.category) parts.push(s.category.replace(/-/g, " "));
+    if (s.delivery) parts.push(s.delivery === "auto" ? "auto-delivery" : "manual delivery");
+    const label = parts.length ? parts.join(" · ") : "All listings";
+    const title = `${label} — Browse X-VAULT`;
+    const desc = `Browse ${label.toLowerCase()} on X-VAULT. Escrow-protected, USDT payments, instant delivery from verified sellers.`;
+    const canonical =
+      s.category && !s.q && !s.item && !s.delivery
+        ? `${SITE}/browse?category=${encodeURIComponent(s.category)}`
+        : `${SITE}/browse`;
+    const noindex = !!(s.q || s.minPrice || s.maxPrice || s.page);
+    return {
+      meta: [
+        { title },
+        { name: "description", content: desc.slice(0, 155) },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc.slice(0, 155) },
+        { property: "og:url", content: canonical },
+        ...(noindex ? [{ name: "robots", content: "noindex,follow" }] : []),
+      ],
+      links: [{ rel: "canonical", href: canonical }],
+    };
+  },
   component: BrowsePage,
 });
 
