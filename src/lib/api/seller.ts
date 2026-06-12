@@ -245,7 +245,7 @@ export const saveProduct = createServerFn({ method: "POST" })
         data.title,
         slugify(data.title),
         data.description,
-        data.imageKey ?? null,
+        data.imageIds[0] ? `upload:${data.imageIds[0]}` : (data.imageKey ?? null),
         data.deliveryType,
         data.deliverySlaMinutes,
         data.warrantyHours,
