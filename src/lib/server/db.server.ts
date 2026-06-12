@@ -836,6 +836,24 @@ async function migrate(e: Engine): Promise<void> {
     .exec(`create index if not exists idx_trust_history_user on seller_trust_history(user_id, captured_at)`)
     .catch(() => {});
 
+  // --- Seller follows (buyers subscribe to a seller's storefront) ---
+  await e
+    .exec(
+      `create table if not exists seller_follows (
+        user_id text not null,
+        seller_id text not null,
+        created_at ${big} not null,
+        primary key (user_id, seller_id)
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_follows_seller on seller_follows(seller_id)`)
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_follows_user on seller_follows(user_id, created_at)`)
+    .catch(() => {});
+
   // seed a sane default set if empty
   const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
   if (!seeded[0] || Number(seeded[0].c) === 0) {
