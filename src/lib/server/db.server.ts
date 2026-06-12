@@ -192,20 +192,22 @@ async function createPostgresEngine(): Promise<Engine> {
 // Public API
 // ---------------------------------------------------------------------------
 async function schemaAlreadyMigrated(e: Engine): Promise<boolean> {
-  // Sentinel: the most recently added column (Phase 11). If present, every
-  // earlier additive column is also present, so we can skip the ~100-statement
-  // migration on Worker cold starts. The full migration still runs on a fresh
-  // database (sentinel missing) or on SQLite local dev.
+  // Sentinel: a table from the most recent migration. If present, every
+  // earlier additive column/table is also present, so we skip the
+  // ~100-statement migration on Worker cold starts. Bump the sentinel
+  // whenever you add a new column or table to migrate().
   try {
     if (isPostgres()) {
       const r = await e.q<{ c: number }>(
-        `select count(*)::int as c from information_schema.columns
-         where table_schema = 'public' and table_name = 'products' and column_name = 'sale_ends_at'`,
+        `select count(*)::int as c from information_schema.tables
+         where table_schema = 'public' and table_name = 'product_images'`,
       );
       return !!r[0] && Number(r[0].c) > 0;
     }
-    const r = await e.q<{ name: string }>(`pragma table_info(products)`);
-    return r.some((x) => x.name === "sale_ends_at");
+    const r = await e.q<{ name: string }>(
+      `select name from sqlite_master where type='table' and name='product_images'`,
+    );
+    return r.length > 0;
   } catch {
     return false;
   }
@@ -725,6 +727,27 @@ async function migrate(e: Engine): Promise<void> {
       )`,
     )
     .catch(() => {});
+
+  // --- Phase 12: seller-uploaded product images (multiple per listing) ---
+  await e
+    .exec(
+      `create table if not exists product_images (
+        id text primary key,
+        product_id text,
+        seller_id text not null,
+        mime text not null,
+        data text not null,
+        sort integer not null default 0,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(
+      `create index if not exists idx_product_images on product_images(product_id, sort)`,
+    )
+    .catch(() => {});
+
   // seed a sane default set if empty
   const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
   if (!seeded[0] || Number(seeded[0].c) === 0) {

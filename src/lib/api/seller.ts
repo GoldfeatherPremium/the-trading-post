@@ -100,6 +100,7 @@ const productInput = z.object({
   region: z.string().max(40).optional(),
   platform: z.string().max(40).optional(),
   requiredInfo: z.string().max(500).optional(),
+  imageIds: z.array(z.string().min(8).max(40)).max(8).default([]),
   productKind: z
     .enum(["one_time", "subscription_slot", "digital_download", "service"])
     .default("one_time"),
@@ -110,6 +111,34 @@ const productInput = z.object({
 });
 
 const MAX_ACTIVE_LISTINGS: Record<number, number> = { 1: 10, 2: 25, 3: 60, 4: 150, 5: 100_000 };
+
+/**
+ * Attach pre-uploaded product images (owned by sellerId) to a product, in
+ * the given order. Removes any images previously attached to the product
+ * that are no longer referenced.
+ */
+async function attachImagesToProduct(
+  productId: string,
+  sellerId: string,
+  imageIds: string[],
+): Promise<void> {
+  const existing = await q<{ id: string }>(
+    `select id from product_images where product_id = ?`,
+    [productId],
+  );
+  for (const row of existing) {
+    if (!imageIds.includes(row.id)) {
+      await run(`delete from product_images where id = ? and seller_id = ?`, [row.id, sellerId]);
+    }
+  }
+  for (let i = 0; i < imageIds.length; i++) {
+    await run(
+      `update product_images set product_id = ?, sort = ? where id = ? and seller_id = ?`,
+      [productId, i, imageIds[i], sellerId],
+    );
+  }
+}
+
 
 export const saveProduct = createServerFn({ method: "POST" })
   .inputValidator(productInput.extend({ productId: z.string().optional() }))
@@ -153,7 +182,7 @@ export const saveProduct = createServerFn({ method: "POST" })
           itemId,
           data.title,
           data.description,
-          data.imageKey ?? null,
+          data.imageIds[0] ? `upload:${data.imageIds[0]}` : (data.imageKey ?? null),
           data.deliverySlaMinutes,
           data.warrantyHours,
           Math.round(data.priceUsdt * 100),
@@ -189,6 +218,7 @@ export const saveProduct = createServerFn({ method: "POST" })
           [uid(), data.productId, v.title, Math.round(v.priceUsdt * 100), i],
         );
       }
+      await attachImagesToProduct(data.productId, user.id, data.imageIds);
       await audit(user.id, "product.update", "product", data.productId);
       return { productId: data.productId };
     }
@@ -251,6 +281,7 @@ export const saveProduct = createServerFn({ method: "POST" })
         [uid(), id, v.title, Math.round(v.priceUsdt * 100), i],
       );
     }
+    await attachImagesToProduct(id, user.id, data.imageIds);
     await audit(user.id, "product.create", "product", id);
     return { productId: id };
   });
@@ -640,5 +671,62 @@ export const suggestItem = createServerFn({ method: "POST" })
       [uid(), user.id, data.name.trim(), data.note ?? null, now()],
     );
     await audit(user.id, "item_suggestion.create", "item_suggestion", data.name);
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Seller-uploaded product images (stored inline as base64 in the DB so we
+// don't need an external object store). Hard caps: 2MB per image, 8 per
+// listing. Served back through /api/public/img/$id.
+// ---------------------------------------------------------------------------
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB raw
+const ALLOWED_IMAGE_MIME = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+export const uploadProductImage = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      mime: z.string().min(3).max(40),
+      dataBase64: z.string().min(16).max(Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 1024),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    if (!ALLOWED_IMAGE_MIME.includes(data.mime))
+      fail("Unsupported image format. Use PNG, JPEG, WebP, or GIF.");
+    const approxBytes = Math.floor((data.dataBase64.length * 3) / 4);
+    if (approxBytes > MAX_IMAGE_BYTES) fail("Image is too large (2 MB max).");
+    const recent = (await q1<{ c: number }>(
+      `select count(*) c from product_images where seller_id = ? and created_at > ?`,
+      [user.id, now() - 3_600_000],
+    ))!.c;
+    if (recent > 60) fail("Upload limit reached, try again later.");
+    const id = uid();
+    await run(
+      `insert into product_images (id, product_id, seller_id, mime, data, sort, created_at)
+       values (?, null, ?, ?, ?, 0, ?)`,
+      [id, user.id, data.mime, data.dataBase64, now()],
+    );
+    return { id };
+  });
+
+export const listMyProductImages = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ productId: z.string() }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    const rows = await q<{ id: string; mime: string }>(
+      `select id, mime from product_images where product_id = ? and seller_id = ? order by sort`,
+      [data.productId, user.id],
+    );
+    return { images: rows };
+  });
+
+export const deleteProductImage = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    await appContext();
+    const user = await requireSeller();
+    await run(`delete from product_images where id = ? and seller_id = ?`, [data.id, user.id]);
     return { ok: true };
   });
