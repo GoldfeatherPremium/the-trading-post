@@ -29,6 +29,7 @@ import { Route as SellerWalletRouteImport } from './routes/seller.wallet'
 import { Route as SellerVerificationRouteImport } from './routes/seller.verification'
 import { Route as SellerSubscriptionsRouteImport } from './routes/seller.subscriptions'
 import { Route as SellerReviewsRouteImport } from './routes/seller.reviews'
+import { Route as SellerPromotionsRouteImport } from './routes/seller.promotions'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
 import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
 import { Route as SellerNewProductRouteImport } from './routes/seller.new-product'
@@ -154,6 +155,11 @@ const SellerSubscriptionsRoute = SellerSubscriptionsRouteImport.update({
 const SellerReviewsRoute = SellerReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerPromotionsRoute = SellerPromotionsRouteImport.update({
+  id: '/promotions',
+  path: '/promotions',
   getParentRoute: () => SellerRoute,
 } as any)
 const SellerProductsRoute = SellerProductsRouteImport.update({
@@ -326,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/seller/new-product': typeof SellerNewProductRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
+  '/seller/promotions': typeof SellerPromotionsRoute
   '/seller/reviews': typeof SellerReviewsRoute
   '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
@@ -372,6 +379,7 @@ export interface FileRoutesByTo {
   '/seller/new-product': typeof SellerNewProductRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
+  '/seller/promotions': typeof SellerPromotionsRoute
   '/seller/reviews': typeof SellerReviewsRoute
   '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   '/seller/new-product': typeof SellerNewProductRoute
   '/seller/orders': typeof SellerOrdersRoute
   '/seller/products': typeof SellerProductsRoute
+  '/seller/promotions': typeof SellerPromotionsRoute
   '/seller/reviews': typeof SellerReviewsRoute
   '/seller/subscriptions': typeof SellerSubscriptionsRoute
   '/seller/verification': typeof SellerVerificationRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/seller/new-product'
     | '/seller/orders'
     | '/seller/products'
+    | '/seller/promotions'
     | '/seller/reviews'
     | '/seller/subscriptions'
     | '/seller/verification'
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/seller/new-product'
     | '/seller/orders'
     | '/seller/products'
+    | '/seller/promotions'
     | '/seller/reviews'
     | '/seller/subscriptions'
     | '/seller/verification'
@@ -565,6 +576,7 @@ export interface FileRouteTypes {
     | '/seller/new-product'
     | '/seller/orders'
     | '/seller/products'
+    | '/seller/promotions'
     | '/seller/reviews'
     | '/seller/subscriptions'
     | '/seller/verification'
@@ -736,6 +748,13 @@ declare module '@tanstack/react-router' {
       path: '/reviews'
       fullPath: '/seller/reviews'
       preLoaderRoute: typeof SellerReviewsRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/promotions': {
+      id: '/seller/promotions'
+      path: '/promotions'
+      fullPath: '/seller/promotions'
+      preLoaderRoute: typeof SellerPromotionsRouteImport
       parentRoute: typeof SellerRoute
     }
     '/seller/products': {
@@ -991,6 +1010,7 @@ interface SellerRouteChildren {
   SellerNewProductRoute: typeof SellerNewProductRoute
   SellerOrdersRoute: typeof SellerOrdersRoute
   SellerProductsRoute: typeof SellerProductsRoute
+  SellerPromotionsRoute: typeof SellerPromotionsRoute
   SellerReviewsRoute: typeof SellerReviewsRoute
   SellerSubscriptionsRoute: typeof SellerSubscriptionsRoute
   SellerVerificationRoute: typeof SellerVerificationRoute
@@ -1004,6 +1024,7 @@ const SellerRouteChildren: SellerRouteChildren = {
   SellerNewProductRoute: SellerNewProductRoute,
   SellerOrdersRoute: SellerOrdersRoute,
   SellerProductsRoute: SellerProductsRoute,
+  SellerPromotionsRoute: SellerPromotionsRoute,
   SellerReviewsRoute: SellerReviewsRoute,
   SellerSubscriptionsRoute: SellerSubscriptionsRoute,
   SellerVerificationRoute: SellerVerificationRoute,
