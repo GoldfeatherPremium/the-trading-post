@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { AlertTriangle, BookOpen, ListChecks, Send } from "lucide-react";
+import { AlertTriangle, BookOpen, ListChecks, Send, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { getHomeData, listCatalogItems } from "@/lib/api/catalog";
 import { suggestItem } from "@/lib/api/seller";
 import { listMyProducts, saveProduct } from "@/lib/api/seller";
+import { aiDraftListing, aiPolishDescription } from "@/lib/api/copilot";
 import { IMAGE_KEYS, productImage } from "@/lib/images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
