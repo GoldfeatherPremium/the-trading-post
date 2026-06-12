@@ -286,7 +286,7 @@ export const applyListingOptimization = createServerFn({ method: "POST" })
       data.productId,
     ]);
     if (!p || p.seller_id !== seller.id) fail("Listing not found.");
-    const { run } = await import("../server/db.server");
+    // run() already imported at top of file
     await run(`update products set title = ?, description = ? where id = ?`, [
       data.title,
       data.description,
