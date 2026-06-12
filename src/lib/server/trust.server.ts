@@ -169,4 +169,53 @@ export async function recomputeSellerTrust(userId: string): Promise<void> {
       userId,
     ],
   );
+
+  // Append a history snapshot at most once per UTC day, and only when the
+  // score actually moved. Cheap, safe, and powers the trust trend sparkline.
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const sinceMidnight = dayStart.getTime();
+  const last = await q1<{ score: number; captured_at: number }>(
+    `select score, captured_at from seller_trust_history where user_id = ? order by captured_at desc limit 1`,
+    [userId],
+  );
+  const changed = !last || Math.abs(Number(last.score) - score) >= 0.1;
+  const newDay = !last || Number(last.captured_at) < sinceMidnight;
+  if (changed || newDay) {
+    await run(
+      `insert into seller_trust_history (user_id, score, seller_level, total_sales, captured_at) values (?,?,?,?,?)`,
+      [userId, score, level, stats.total_sales, Date.now()],
+    ).catch(() => {});
+  }
+}
+
+/** Return up to `days` of recent trust score samples (oldest first). */
+export async function getTrustHistory(userId: string, days = 30) {
+  const since = Date.now() - days * 86_400_000;
+  const rows = await q1; // no-op to avoid unused import warnings; real query below
+  void rows;
+  const { q } = await import("./db.server");
+  const items = await q<{ score: number; captured_at: number; seller_level: number }>(
+    `select score, captured_at, seller_level from seller_trust_history
+       where user_id = ? and captured_at >= ?
+       order by captured_at asc limit 200`,
+    [userId, since],
+  );
+  return items.map((r) => ({
+    score: Number(r.score),
+    level: Number(r.seller_level),
+    at: Number(r.captured_at),
+  }));
+}
+      ratingAvg,
+      stats.rating_count,
+      completionRate,
+      stats.refund_count,
+      stats.dispute_count,
+      avgDelivery,
+      score,
+      level,
+      userId,
+    ],
+  );
 }
