@@ -147,7 +147,10 @@ function SellerStorePage() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-2xl sm:text-3xl">{s.username}</h1>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <h1 className="font-display text-2xl sm:text-3xl">{s.username}</h1>
+              <FollowSellerButton sellerId={s.id} />
+            </div>
             <div className="mt-2 flex items-center gap-1.5 flex-wrap">
               <SellerBadge tier={s.verification_tier} level={s.seller_level} score={s.trust_score} />
               <TrustSparkline userId={s.id} currentScore={s.trust_score} />
