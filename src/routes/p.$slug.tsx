@@ -76,6 +76,20 @@ export const Route = createFileRoute("/p/$slug")({
           }
         : {}),
     };
+    const breadcrumbs = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: SITE },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: p.category_name,
+          item: `${SITE}/browse?category=${encodeURIComponent(p.category_slug)}`,
+        },
+        { "@type": "ListItem", position: 3, name: p.title, item: url },
+      ],
+    };
     return {
       meta: [
         { title },
@@ -92,6 +106,7 @@ export const Route = createFileRoute("/p/$slug")({
       links: [{ rel: "canonical", href: url }],
       scripts: [
         { type: "application/ld+json", children: JSON.stringify(jsonLd) },
+        { type: "application/ld+json", children: JSON.stringify(breadcrumbs) },
       ],
     };
   },
