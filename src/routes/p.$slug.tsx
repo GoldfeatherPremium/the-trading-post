@@ -3,11 +3,11 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Zap, Clock, ShieldCheck, Star, MessageSquare, Minus, Plus } from "lucide-react";
-import { getProduct } from "@/lib/api/catalog";
+import { getProduct, getRelatedProducts } from "@/lib/api/catalog";
 import { createOrder } from "@/lib/api/orders";
 import { startProductConversation } from "@/lib/api/chat";
 import { checkCoupon } from "@/lib/api/extras";
-import { FavoriteButton } from "@/components/product-card";
+import { FavoriteButton, ProductCard } from "@/components/product-card";
 import { useMe } from "@/hooks/use-me";
 import { PageShell } from "@/components/shell";
 import { productImage } from "@/lib/images";
@@ -15,8 +15,85 @@ import { usdt, usdtShort, timeAgo } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
+const SITE = "https://warm-trade-space.lovable.app";
+
 export const Route = createFileRoute("/p/$slug")({
-  head: () => ({ meta: [{ title: "Product — X-VAULT" }] }),
+  loader: async ({ params, context }) => {
+    try {
+      const data = await context.queryClient.ensureQueryData({
+        queryKey: ["product", params.slug],
+        queryFn: () => getProduct({ data: { slug: params.slug } }),
+      });
+      return { product: data?.product ?? null };
+    } catch {
+      return { product: null };
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const p = loaderData?.product;
+    const url = `${SITE}/p/${params.slug}`;
+    if (!p) {
+      return {
+        meta: [{ title: "Product — X-VAULT" }],
+        links: [{ rel: "canonical", href: url }],
+      };
+    }
+    const title = `${p.title} — ${p.category_name} | X-VAULT`;
+    const desc = (p.description || `Buy ${p.title} on X-VAULT — escrow-protected, ${p.warranty_hours}h warranty.`)
+      .replace(/\s+/g, " ")
+      .slice(0, 155);
+    const img = p.image_key && !p.image_key.startsWith("upload:")
+      ? `${SITE}${productImage(p.image_key)}`
+      : undefined;
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: p.title,
+      description: desc,
+      sku: p.id,
+      category: p.category_name,
+      ...(img ? { image: img } : {}),
+      brand: { "@type": "Brand", name: p.seller.username },
+      offers: {
+        "@type": "Offer",
+        url,
+        priceCurrency: "USD",
+        price: (p.price_cents / 100).toFixed(2),
+        availability:
+          p.delivery_type === "manual" || p.stock_count > 0
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        seller: { "@type": "Organization", name: p.seller.username },
+      },
+      ...(p.seller.rating_count > 0
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: p.seller.rating.toFixed(1),
+              reviewCount: p.seller.rating_count,
+            },
+          }
+        : {}),
+    };
+    return {
+      meta: [
+        { title },
+        { name: "description", content: desc },
+        { property: "og:type", content: "product" },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:url", content: url },
+        ...(img ? [{ property: "og:image", content: img }] : []),
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
+        ...(img ? [{ name: "twitter:image", content: img }] : []),
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: [
+        { type: "application/ld+json", children: JSON.stringify(jsonLd) },
+      ],
+    };
+  },
   component: ProductPage,
 });
 
@@ -411,6 +488,33 @@ function ProductPage() {
           </Link>
         </div>
       </div>
+
+      <RelatedProducts productId={p.id} />
     </PageShell>
   );
+}
+
+function RelatedProducts({ productId }: { productId: string }) {
+  const { data } = useQuery({
+    queryKey: ["relatedProducts", productId],
+    queryFn: () => getRelatedProducts({ data: { productId, limit: 8 } }),
+  });
+  const items = data?.items ?? [];
+  if (items.length === 0) return null;
+  return (
+    <section className="mt-10">
+      <h2 className="font-display text-xl mb-3 flex items-center gap-2">
+        <Sparkle /> RELATED PRODUCTS
+      </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {items.map((it) => (
+          <ProductCard key={it.id} product={it} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Sparkle() {
+  return <Star className="size-4 text-primary" />;
 }
