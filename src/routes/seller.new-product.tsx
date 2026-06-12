@@ -145,65 +145,6 @@ function ProductForm() {
         </span>
       </div>
 
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-bold flex items-center gap-2">
-            <Sparkles className="size-3.5 text-primary" /> AI Listing Copilot
-          </p>
-          <button
-            type="button"
-            className="text-[10px] text-primary font-bold"
-            onClick={() => setAiOpen((v) => !v)}
-          >
-            {aiOpen ? "Hide" : "Draft with AI"} →
-          </button>
-        </div>
-        {aiOpen && (
-          <div className="space-y-2">
-            <Textarea
-              rows={3}
-              placeholder="Brief: what are you selling? Include platform, region, delivery method, warranty…"
-              value={aiBrief}
-              onChange={(e) => setAiBrief(e.target.value)}
-              className="text-xs"
-            />
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] text-muted-foreground">
-                AI may misread tricky cases — always review before submitting. Prohibited listings
-                will still be rejected by staff.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                disabled={draft.isPending || aiBrief.trim().length < 10}
-                onClick={() => draft.mutate()}
-              >
-                {draft.isPending ? "Drafting…" : "Generate"}
-              </Button>
-            </div>
-          </div>
-        )}
-        {aiWarnings.length > 0 && (
-          <ul className="text-[10px] text-yellow-400 list-disc pl-4 space-y-0.5">
-            {aiWarnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        )}
-        {aiTips.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {aiTips.map((t, i) => (
-              <span
-                key={i}
-                className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
       <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
         <BookOpen className="size-4 text-primary" /> General Info
       </h2>
