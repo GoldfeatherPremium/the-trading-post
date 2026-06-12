@@ -704,3 +704,61 @@ function ProductForm() {
     </form>
   );
 }
+
+function AiGenerator({
+  itemName,
+  categoryName,
+  onApply,
+}: {
+  itemName: string;
+  categoryName: string;
+  onApply: (r: { title?: string; description?: string }) => void;
+}) {
+  const [hint, setHint] = useState("");
+  const [open, setOpen] = useState(false);
+  const gen = useMutation({
+    mutationFn: () =>
+      generateProductContent({
+        data: { itemName, categoryName: categoryName || undefined, hint: hint || undefined, field: "all" },
+      }),
+    onSuccess: (r) => {
+      onApply({ title: r.title, description: r.description });
+      toast.success("AI draft applied — review and edit before submitting.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (!itemName) return null;
+  return (
+    <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-xs font-bold text-primary"
+      >
+        <Sparkles className="size-4" /> Generate with AI
+      </button>
+      {open && (
+        <div className="space-y-2">
+          <Input
+            placeholder={`Optional notes (e.g. "1 month, EU region, instant")`}
+            value={hint}
+            onChange={(e) => setHint(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => gen.mutate()}
+            disabled={gen.isPending}
+            className="text-xs"
+          >
+            {gen.isPending ? "Generating…" : "Fill title & description"}
+          </Button>
+          <p className="text-[10px] text-muted-foreground">
+            AI draft fills the title and description below. Always review before submitting.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
