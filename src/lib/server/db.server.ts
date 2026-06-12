@@ -200,12 +200,12 @@ async function schemaAlreadyMigrated(e: Engine): Promise<boolean> {
     if (isPostgres()) {
       const r = await e.q<{ c: number }>(
         `select count(*)::int as c from information_schema.tables
-         where table_schema = 'public' and table_name = 'product_images'`,
+         where table_schema = 'public' and table_name = 'search_queries'`,
       );
       return !!r[0] && Number(r[0].c) > 0;
     }
     const r = await e.q<{ name: string }>(
-      `select name from sqlite_master where type='table' and name='product_images'`,
+      `select name from sqlite_master where type='table' and name='search_queries'`,
     );
     return r.length > 0;
   } catch {
@@ -746,6 +746,29 @@ async function migrate(e: Engine): Promise<void> {
     .exec(
       `create index if not exists idx_product_images on product_images(product_id, sort)`,
     )
+    .catch(() => {});
+
+  // --- Phase 2: search analytics ---
+  await e
+    .exec(
+      `create table if not exists search_queries (
+        id ${pk},
+        query text not null,
+        user_id text,
+        results integer not null default 0,
+        clicked_product_id text,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_search_queries_query on search_queries(query)`)
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_search_queries_created on search_queries(created_at)`)
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_favorites_product on favorites(product_id)`)
     .catch(() => {});
 
   // seed a sane default set if empty
