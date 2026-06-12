@@ -112,6 +112,34 @@ const productInput = z.object({
 
 const MAX_ACTIVE_LISTINGS: Record<number, number> = { 1: 10, 2: 25, 3: 60, 4: 150, 5: 100_000 };
 
+/**
+ * Attach pre-uploaded product images (owned by sellerId) to a product, in
+ * the given order. Removes any images previously attached to the product
+ * that are no longer referenced.
+ */
+async function attachImagesToProduct(
+  productId: string,
+  sellerId: string,
+  imageIds: string[],
+): Promise<void> {
+  const existing = await q<{ id: string }>(
+    `select id from product_images where product_id = ?`,
+    [productId],
+  );
+  for (const row of existing) {
+    if (!imageIds.includes(row.id)) {
+      await run(`delete from product_images where id = ? and seller_id = ?`, [row.id, sellerId]);
+    }
+  }
+  for (let i = 0; i < imageIds.length; i++) {
+    await run(
+      `update product_images set product_id = ?, sort = ? where id = ? and seller_id = ?`,
+      [productId, i, imageIds[i], sellerId],
+    );
+  }
+}
+
+
 export const saveProduct = createServerFn({ method: "POST" })
   .inputValidator(productInput.extend({ productId: z.string().optional() }))
   .handler(async ({ data }) => {
