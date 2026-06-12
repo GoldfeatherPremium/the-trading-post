@@ -7,6 +7,7 @@ import {
   Star,
   ShieldCheck,
   Repeat,
+  BarChart3,
 } from "lucide-react";
 import { PageShell } from "@/components/shell";
 import { useMe } from "@/hooks/use-me";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/seller")({
 
 const NAV = [
   { to: "/seller", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/seller/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/seller/products", label: "Products", icon: Package },
   { to: "/seller/orders", label: "Orders", icon: ListOrdered },
   { to: "/seller/subscriptions", label: "Subscriptions", icon: Repeat },
