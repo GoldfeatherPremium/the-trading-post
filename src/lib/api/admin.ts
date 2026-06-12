@@ -265,6 +265,35 @@ export const reviewProduct = createServerFn({ method: "POST" })
         next,
         data.productId,
       ]);
+      // Fan out a notification to every follower of this seller — drives
+      // repeat traffic from buyers who already trust the store.
+      if (next === "active") {
+        const followers = await q<{ user_id: string }>(
+          `select user_id from seller_follows where seller_id = ?`,
+          [p!.seller_id],
+        );
+        const sellerRow = await q1<{ username: string }>(
+          `select username from users where id = ?`,
+          [p!.seller_id],
+        );
+        const sellerName = sellerRow?.username ?? "A seller you follow";
+        const productSlug = await q1<{ slug: string }>(
+          `select slug from products where id = ?`,
+          [data.productId],
+        );
+        const link = productSlug ? `/p/${productSlug.slug}` : "/browse";
+        await Promise.all(
+          followers.map((f) =>
+            notify(
+              f.user_id,
+              "followed_seller_listing",
+              `${sellerName} just listed something new`,
+              p!.title,
+              link,
+            ),
+          ),
+        );
+      }
     } else {
       if (!data.reason) fail("A rejection reason is required.");
       await run(`update products set status = 'rejected', reject_reason = ? where id = ?`, [
