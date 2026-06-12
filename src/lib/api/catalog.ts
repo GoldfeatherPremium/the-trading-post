@@ -274,13 +274,22 @@ export const getSellerStore = createServerFn({ method: "GET" })
   .inputValidator(z.object({ username: z.string() }))
   .handler(async ({ data }) => {
     await appContext();
-    const seller = await q1<PublicSeller>(
+    const sellerRow = await q1<StoreProfile & { store_socials: unknown }>(
       `select id, username, seller_level, rating, rating_count, total_sales, completion_rate, vacation_mode, created_at,
-              verification_tier, trust_score
+              verification_tier, trust_score, store_banner_url, store_logo_url, store_description,
+              store_socials, store_announcement, avg_response_minutes, avg_delivery_minutes,
+              refund_count, dispute_count
        from users where lower(username) = lower(?) and seller_status = 'approved' and is_banned = 0`,
       [data.username],
     );
-    if (!seller) return { seller: null, products: [], reviews: [] };
+    if (!sellerRow) return { seller: null, products: [], reviews: [] };
+    const seller: StoreProfile = {
+      ...sellerRow,
+      store_socials:
+        typeof sellerRow.store_socials === "string"
+          ? JSON.parse(sellerRow.store_socials)
+          : ((sellerRow.store_socials as Record<string, string> | null) ?? {}),
+    };
     const [productRows, reviews] = await Promise.all([
       q(
         `${productSelect} where p.seller_id = ? and p.status in ('active','out_of_stock') order by p.sold_count desc`,
