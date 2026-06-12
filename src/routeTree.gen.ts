@@ -38,6 +38,7 @@ import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
 import { Route as SellerNewProductRouteImport } from './routes/seller.new-product'
 import { Route as SellerAnalyticsRouteImport } from './routes/seller.analytics'
 import { Route as SUsernameRouteImport } from './routes/s.$username'
+import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as PayOrderIdRouteImport } from './routes/pay.$orderId'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
@@ -58,6 +59,7 @@ import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AccountSubscriptionsRouteImport } from './routes/account.subscriptions'
+import { Route as AccountAffiliateRouteImport } from './routes/account.affiliate'
 import { Route as SellerStockProductIdRouteImport } from './routes/seller.stock.$productId'
 import { Route as ApiPublicImgIdRouteImport } from './routes/api/public/img.$id'
 
@@ -206,6 +208,11 @@ const SUsernameRoute = SUsernameRouteImport.update({
   path: '/s/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RCodeRoute = RCodeRouteImport.update({
+  id: '/r/$code',
+  path: '/r/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PayOrderIdRoute = PayOrderIdRouteImport.update({
   id: '/pay/$orderId',
   path: '/pay/$orderId',
@@ -306,6 +313,11 @@ const AccountSubscriptionsRoute = AccountSubscriptionsRouteImport.update({
   path: '/subscriptions',
   getParentRoute: () => AccountRoute,
 } as any)
+const AccountAffiliateRoute = AccountAffiliateRouteImport.update({
+  id: '/affiliate',
+  path: '/affiliate',
+  getParentRoute: () => AccountRoute,
+} as any)
 const SellerStockProductIdRoute = SellerStockProductIdRouteImport.update({
   id: '/stock/$productId',
   path: '/stock/$productId',
@@ -333,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/seller': typeof SellerRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/wallet': typeof WalletRoute
+  '/account/affiliate': typeof AccountAffiliateRoute
   '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit': typeof AdminAuditRoute
@@ -353,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
+  '/r/$code': typeof RCodeRoute
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
@@ -384,6 +398,7 @@ export interface FileRoutesByTo {
   '/sell': typeof SellRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/wallet': typeof WalletRoute
+  '/account/affiliate': typeof AccountAffiliateRoute
   '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit': typeof AdminAuditRoute
@@ -404,6 +419,7 @@ export interface FileRoutesByTo {
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
+  '/r/$code': typeof RCodeRoute
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
@@ -438,6 +454,7 @@ export interface FileRoutesById {
   '/seller': typeof SellerRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/wallet': typeof WalletRoute
+  '/account/affiliate': typeof AccountAffiliateRoute
   '/account/subscriptions': typeof AccountSubscriptionsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit': typeof AdminAuditRoute
@@ -458,6 +475,7 @@ export interface FileRoutesById {
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/p/$slug': typeof PSlugRoute
   '/pay/$orderId': typeof PayOrderIdRoute
+  '/r/$code': typeof RCodeRoute
   '/s/$username': typeof SUsernameRoute
   '/seller/analytics': typeof SellerAnalyticsRoute
   '/seller/new-product': typeof SellerNewProductRoute
@@ -493,6 +511,7 @@ export interface FileRouteTypes {
     | '/seller'
     | '/sitemap.xml'
     | '/wallet'
+    | '/account/affiliate'
     | '/account/subscriptions'
     | '/admin/analytics'
     | '/admin/audit'
@@ -513,6 +532,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
+    | '/r/$code'
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
@@ -544,6 +564,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/sitemap.xml'
     | '/wallet'
+    | '/account/affiliate'
     | '/account/subscriptions'
     | '/admin/analytics'
     | '/admin/audit'
@@ -564,6 +585,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
+    | '/r/$code'
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
@@ -597,6 +619,7 @@ export interface FileRouteTypes {
     | '/seller'
     | '/sitemap.xml'
     | '/wallet'
+    | '/account/affiliate'
     | '/account/subscriptions'
     | '/admin/analytics'
     | '/admin/audit'
@@ -617,6 +640,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/p/$slug'
     | '/pay/$orderId'
+    | '/r/$code'
     | '/s/$username'
     | '/seller/analytics'
     | '/seller/new-product'
@@ -654,6 +678,7 @@ export interface RootRouteChildren {
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
   PSlugRoute: typeof PSlugRoute
   PayOrderIdRoute: typeof PayOrderIdRoute
+  RCodeRoute: typeof RCodeRoute
   SUsernameRoute: typeof SUsernameRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
   ApiPublicImgIdRoute: typeof ApiPublicImgIdRoute
@@ -864,6 +889,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/r/$code': {
+      id: '/r/$code'
+      path: '/r/$code'
+      fullPath: '/r/$code'
+      preLoaderRoute: typeof RCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pay/$orderId': {
       id: '/pay/$orderId'
       path: '/pay/$orderId'
@@ -1004,6 +1036,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSubscriptionsRouteImport
       parentRoute: typeof AccountRoute
     }
+    '/account/affiliate': {
+      id: '/account/affiliate'
+      path: '/affiliate'
+      fullPath: '/account/affiliate'
+      preLoaderRoute: typeof AccountAffiliateRouteImport
+      parentRoute: typeof AccountRoute
+    }
     '/seller/stock/$productId': {
       id: '/seller/stock/$productId'
       path: '/stock/$productId'
@@ -1022,10 +1061,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AccountRouteChildren {
+  AccountAffiliateRoute: typeof AccountAffiliateRoute
   AccountSubscriptionsRoute: typeof AccountSubscriptionsRoute
 }
 
 const AccountRouteChildren: AccountRouteChildren = {
+  AccountAffiliateRoute: AccountAffiliateRoute,
   AccountSubscriptionsRoute: AccountSubscriptionsRoute,
 }
 
@@ -1136,6 +1177,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersOrderIdRoute: OrdersOrderIdRoute,
   PSlugRoute: PSlugRoute,
   PayOrderIdRoute: PayOrderIdRoute,
+  RCodeRoute: RCodeRoute,
   SUsernameRoute: SUsernameRoute,
   OrdersIndexRoute: OrdersIndexRoute,
   ApiPublicImgIdRoute: ApiPublicImgIdRoute,

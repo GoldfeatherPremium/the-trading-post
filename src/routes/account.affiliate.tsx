@@ -91,8 +91,8 @@ function AffiliatePage() {
           <Button
             size="sm"
             onClick={() => {
-              if (typeof navigator !== "undefined" && "share" in navigator) {
-                navigator.share({ title: "Join X-VAULT", url: link }).catch(() => {});
+              if (typeof navigator !== "undefined" && typeof (navigator as Navigator).share === "function") {
+                (navigator as Navigator).share({ title: "Join X-VAULT", url: link }).catch(() => {});
               } else {
                 navigator.clipboard?.writeText(link).catch(() => {});
                 toast.success("Link copied");
