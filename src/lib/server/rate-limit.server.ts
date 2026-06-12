@@ -22,8 +22,16 @@ export class RateLimitedError extends Error {
   }
 }
 
+let lastSweep = 0;
+function sweep(now: number) {
+  if (now - lastSweep < 60_000) return;
+  lastSweep = now;
+  for (const [k, v] of buckets) if (v.resetAt <= now) buckets.delete(k);
+}
+
 export function rateLimit(opts: RateLimitOptions): void {
   const now = Date.now();
+  sweep(now);
   const entry = buckets.get(opts.key);
   if (!entry || entry.resetAt <= now) {
     buckets.set(opts.key, { tokens: opts.limit - 1, resetAt: now + opts.windowMs });
@@ -34,9 +42,3 @@ export function rateLimit(opts: RateLimitOptions): void {
   }
   entry.tokens -= 1;
 }
-
-// Lazy cleanup so the map never grows unbounded
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of buckets) if (v.resetAt <= now) buckets.delete(k);
-}, 60_000).unref?.();
