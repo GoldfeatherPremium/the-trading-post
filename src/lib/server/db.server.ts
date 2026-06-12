@@ -771,6 +771,54 @@ async function migrate(e: Engine): Promise<void> {
     .exec(`create index if not exists idx_favorites_product on favorites(product_id)`)
     .catch(() => {});
 
+  // --- Phase 4: Affiliate / Referrals ---
+  await e
+    .exec(
+      `create table if not exists referrals (
+        id text primary key,
+        owner_user_id text not null references users(id),
+        code text unique not null,
+        commission_pct ${real} not null default 5.0,
+        click_count integer not null default 0,
+        signup_count integer not null default 0,
+        purchase_count integer not null default 0,
+        earnings_cents ${big} not null default 0,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_referrals_owner on referrals(owner_user_id)`)
+    .catch(() => {});
+  await e
+    .exec(
+      `create table if not exists referral_clicks (
+        id ${dialect === "postgres" ? "bigint generated always as identity primary key" : "integer primary key autoincrement"},
+        referral_id text not null,
+        fingerprint text,
+        user_agent text,
+        country text,
+        created_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_referral_clicks_ref on referral_clicks(referral_id, created_at)`)
+    .catch(() => {});
+  await e
+    .exec(
+      `create table if not exists referral_attributions (
+        user_id text primary key references users(id),
+        referral_id text not null,
+        attributed_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  // --- Phase 4: Vault dedup index on stock content hash ---
+  await e
+    .exec(`create index if not exists idx_stock_hash on stock_items(product_id, content_hash)`)
+    .catch(() => {});
+
   // seed a sane default set if empty
   const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
   if (!seeded[0] || Number(seeded[0].c) === 0) {
