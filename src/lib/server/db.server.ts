@@ -86,21 +86,30 @@ async function createSqliteEngine(): Promise<Engine> {
 type PgSql = {
   unsafe: (sql: string, params?: unknown[]) => Promise<unknown[]>;
   begin: <T>(fn: (tx: PgSql) => Promise<T>) => Promise<T>;
+  end: (opts?: { timeout?: number }) => Promise<void>;
 };
 
 const pgTxStore = new AsyncLocalStorage<PgSql>();
+// Per-request postgres client cache. On Cloudflare Workers, I/O objects
+// (TCP sockets) created during one request cannot be reused in another, so we
+// scope the client to the current request via AsyncLocalStorage. Clients
+// created outside a scope are one-shot and closed after use.
+const pgRequestStore = new AsyncLocalStorage<{ sql: PgSql | null }>();
+let migratedFlag = false;
 
 function toPgPlaceholders(sql: string): string {
   let n = 0;
   return sql.replace(/\?/g, () => `$${++n}`);
 }
 
-async function createPostgresEngine(): Promise<Engine> {
+async function makePgClient(): Promise<PgSql> {
   const { default: postgres } = await import("postgres");
-  const numericOids = [20, 1700]; // int8, numeric → JS numbers (cents/timestamps fit safely)
-  const sql = postgres(process.env.DATABASE_URL!, {
-    max: 10,
-    prepare: false, // required for Supabase transaction-mode pooler
+  const numericOids = [20, 1700];
+  return postgres(process.env.DATABASE_URL!, {
+    max: 5,
+    prepare: false,
+    idle_timeout: 5,
+    max_lifetime: 60,
     types: Object.fromEntries(
       numericOids.map((oid) => [
         `num${oid}`,
@@ -113,21 +122,63 @@ async function createPostgresEngine(): Promise<Engine> {
       ]),
     ),
   }) as unknown as PgSql;
+}
 
-  const client = () => pgTxStore.getStore() ?? sql;
+async function getPgClient(): Promise<{ sql: PgSql; oneShot: boolean }> {
+  const tx = pgTxStore.getStore();
+  if (tx) return { sql: tx, oneShot: false };
+  const slot = pgRequestStore.getStore();
+  if (slot) {
+    if (!slot.sql) slot.sql = await makePgClient();
+    return { sql: slot.sql, oneShot: false };
+  }
+  return { sql: await makePgClient(), oneShot: true };
+}
+
+/** Wrap a server handler so the postgres client is request-scoped and closed. */
+export async function withDbRequest<T>(fn: () => Promise<T>): Promise<T> {
+  const slot: { sql: PgSql | null } = { sql: null };
+  try {
+    return await pgRequestStore.run(slot, fn);
+  } finally {
+    if (slot.sql) await slot.sql.end({ timeout: 1 }).catch(() => {});
+  }
+}
+
+async function createPostgresEngine(): Promise<Engine> {
   return {
     async q<T>(text: string, params: Params = []) {
-      return (await client().unsafe(toPgPlaceholders(text), params as unknown[])) as T[];
+      const { sql, oneShot } = await getPgClient();
+      try {
+        return (await sql.unsafe(toPgPlaceholders(text), params as unknown[])) as T[];
+      } finally {
+        if (oneShot) await sql.end({ timeout: 1 }).catch(() => {});
+      }
     },
     async run(text: string, params: Params = []) {
-      await client().unsafe(toPgPlaceholders(text), params as unknown[]);
+      const { sql, oneShot } = await getPgClient();
+      try {
+        await sql.unsafe(toPgPlaceholders(text), params as unknown[]);
+      } finally {
+        if (oneShot) await sql.end({ timeout: 1 }).catch(() => {});
+      }
     },
     async exec(text: string) {
-      await client().unsafe(text);
+      const { sql, oneShot } = await getPgClient();
+      try {
+        await sql.unsafe(text);
+      } finally {
+        if (oneShot) await sql.end({ timeout: 1 }).catch(() => {});
+      }
     },
-    tx<T>(fn: () => Promise<T>): Promise<T> {
-      if (pgTxStore.getStore()) return fn(); // join the outer transaction
-      return sql.begin((txSql) => pgTxStore.run(txSql, fn)) as Promise<T>;
+    async tx<T>(fn: () => Promise<T>): Promise<T> {
+      if (pgTxStore.getStore()) return fn();
+      const { sql, oneShot } = await getPgClient();
+      try {
+        return (await sql.begin((txSql) => pgTxStore.run(txSql, fn))) as T;
+      } finally {
+        if (oneShot) await sql.end({ timeout: 1 }).catch(() => {});
+      }
     },
   };
 }
@@ -137,8 +188,15 @@ async function createPostgresEngine(): Promise<Engine> {
 // ---------------------------------------------------------------------------
 async function getEngine(): Promise<Engine> {
   if (!engine) engine = await (isPostgres() ? createPostgresEngine() : createSqliteEngine());
-  if (!migrated) migrated = migrate(engine);
-  await migrated;
+  if (isPostgres()) {
+    if (!migratedFlag) {
+      await migrate(engine);
+      migratedFlag = true;
+    }
+  } else {
+    if (!migrated) migrated = migrate(engine);
+    await migrated;
+  }
   return engine;
 }
 
