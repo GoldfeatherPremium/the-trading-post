@@ -819,6 +819,23 @@ async function migrate(e: Engine): Promise<void> {
     .exec(`create index if not exists idx_stock_hash on stock_items(product_id, content_hash)`)
     .catch(() => {});
 
+  // --- Trust Engine: per-seller score history (daily snapshots) ---
+  await e
+    .exec(
+      `create table if not exists seller_trust_history (
+        id ${dialect === "postgres" ? "bigint generated always as identity primary key" : "integer primary key autoincrement"},
+        user_id text not null,
+        score ${real} not null,
+        seller_level integer not null,
+        total_sales integer not null,
+        captured_at ${big} not null
+      )`,
+    )
+    .catch(() => {});
+  await e
+    .exec(`create index if not exists idx_trust_history_user on seller_trust_history(user_id, captured_at)`)
+    .catch(() => {});
+
   // seed a sane default set if empty
   const seeded = await e.q<{ c: number }>(`select count(*) as c from fx_rates`);
   if (!seeded[0] || Number(seeded[0].c) === 0) {
