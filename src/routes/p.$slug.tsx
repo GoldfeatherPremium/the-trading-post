@@ -538,6 +538,18 @@ function RelatedProducts({ productId }: { productId: string }) {
   );
 }
 
+function SellerStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-secondary/60 rounded-md px-2 py-1.5 text-center">
+      <p className="text-[8px] tracking-widest font-bold text-muted-foreground">
+        {label.toUpperCase()}
+      </p>
+      <p className="text-[11px] font-mono mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+
 function Sparkle() {
   return <Star className="size-4 text-primary" />;
 }
