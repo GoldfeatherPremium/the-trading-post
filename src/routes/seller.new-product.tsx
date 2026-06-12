@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { AlertTriangle, BookOpen, ListChecks, Send, Sparkles, Wand2 } from "lucide-react";
+import { AlertTriangle, BookOpen, ListChecks, Send } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { getHomeData, listCatalogItems } from "@/lib/api/catalog";
 import { suggestItem } from "@/lib/api/seller";
 import { listMyProducts, saveProduct } from "@/lib/api/seller";
-import { aiDraftListing, aiPolishDescription } from "@/lib/api/copilot";
 import { IMAGE_KEYS, productImage } from "@/lib/images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,10 +51,6 @@ function ProductForm() {
   const [itemId, setItemId] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestName, setSuggestName] = useState("");
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiBrief, setAiBrief] = useState("");
-  const [aiWarnings, setAiWarnings] = useState<string[]>([]);
-  const [aiTips, setAiTips] = useState<string[]>([]);
   const { data: catalog } = useQuery({
     queryKey: ["catalogItems"],
     queryFn: () => listCatalogItems(),
@@ -66,38 +61,6 @@ function ProductForm() {
       toast.success("Request sent — admins will review it and you'll get a notification.");
       setSuggesting(false);
       setSuggestName("");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const selectedCatName = (id: string) => home?.categories.find((c) => c.id === id)?.name;
-  const draft = useMutation({
-    mutationFn: () =>
-      aiDraftListing({
-        data: { brief: aiBrief, categoryHint: selectedCatName(form.categoryId) },
-      }),
-    onSuccess: (out) => {
-      setForm((f) => ({ ...f, title: out.title, description: out.description }));
-      setAiWarnings(out.warnings ?? []);
-      setAiTips(out.tags ?? []);
-      setAiOpen(false);
-      if (out.warnings && out.warnings.length > 0) {
-        toast.warning("Draft generated with warnings — review before submitting.");
-      } else {
-        toast.success("Draft generated — review and edit before submitting.");
-      }
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const polish = useMutation({
-    mutationFn: () =>
-      aiPolishDescription({
-        data: { title: form.title, description: form.description },
-      }),
-    onSuccess: (out) => {
-      setForm((f) => ({ ...f, description: out.description }));
-      setAiTips(out.suggestions ?? []);
-      toast.success("Description polished.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -180,65 +143,6 @@ function ProductForm() {
           permanent ban with frozen funds. Every new listing and edit goes through staff review
           before becoming visible.
         </span>
-      </div>
-
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-bold flex items-center gap-2">
-            <Sparkles className="size-3.5 text-primary" /> AI Listing Copilot
-          </p>
-          <button
-            type="button"
-            className="text-[10px] text-primary font-bold"
-            onClick={() => setAiOpen((v) => !v)}
-          >
-            {aiOpen ? "Hide" : "Draft with AI"} →
-          </button>
-        </div>
-        {aiOpen && (
-          <div className="space-y-2">
-            <Textarea
-              rows={3}
-              placeholder="Brief: what are you selling? Include platform, region, delivery method, warranty…"
-              value={aiBrief}
-              onChange={(e) => setAiBrief(e.target.value)}
-              className="text-xs"
-            />
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] text-muted-foreground">
-                AI may misread tricky cases — always review before submitting. Prohibited listings
-                will still be rejected by staff.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                disabled={draft.isPending || aiBrief.trim().length < 10}
-                onClick={() => draft.mutate()}
-              >
-                {draft.isPending ? "Drafting…" : "Generate"}
-              </Button>
-            </div>
-          </div>
-        )}
-        {aiWarnings.length > 0 && (
-          <ul className="text-[10px] text-yellow-400 list-disc pl-4 space-y-0.5">
-            {aiWarnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        )}
-        {aiTips.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {aiTips.map((t, i) => (
-              <span
-                key={i}
-                className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       <h2 className="text-sm font-bold flex items-center gap-2 pt-1">
@@ -342,17 +246,7 @@ function ProductForm() {
       </div>
 
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Description (min. 30 chars)</Label>
-          <button
-            type="button"
-            className="text-[10px] text-primary font-bold flex items-center gap-1 disabled:opacity-50"
-            disabled={polish.isPending || form.description.trim().length < 20 || form.title.trim().length < 3}
-            onClick={() => polish.mutate()}
-          >
-            <Wand2 className="size-3" /> {polish.isPending ? "Polishing…" : "Polish with AI"}
-          </button>
-        </div>
+        <Label className="text-xs">Description (min. 30 chars)</Label>
         <Textarea
           required
           minLength={30}
