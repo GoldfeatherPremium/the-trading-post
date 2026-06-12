@@ -42,6 +42,7 @@ export const register = createServerFn({ method: "POST" })
         .max(24)
         .regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers and underscore only"),
       password: z.string().min(8).max(100),
+      refCode: z.string().trim().min(3).max(16).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -59,6 +60,24 @@ export const register = createServerFn({ method: "POST" })
     await run(`insert into wallets (user_id) values (?)`, [id]);
     await createSession(id);
     await audit(id, "user.register", "user", id);
+    // Attribute to referral, if a code was carried from /r/<code>.
+    if (data.refCode) {
+      try {
+        const ref = await q1<{ id: string; owner_user_id: string }>(
+          `select id, owner_user_id from referrals where code = ?`,
+          [data.refCode.toUpperCase()],
+        );
+        if (ref && ref.owner_user_id !== id) {
+          await run(
+            `insert into referral_attributions (user_id, referral_id, attributed_at) values (?,?,?)`,
+            [id, ref.id, now()],
+          );
+          await run(`update referrals set signup_count = signup_count + 1 where id = ?`, [ref.id]);
+        }
+      } catch (e) {
+        console.error("[referral] attribution failed", (e as Error)?.message);
+      }
+    }
     return { ok: true };
   });
 

@@ -310,6 +310,13 @@ export function releaseOrder(orderId: string, note?: string): Promise<void> {
       `${(o.seller_net_cents / 100).toFixed(2)} USDT from ${o.order_no} is now available.`,
       `/seller/wallet`,
     );
+    // Affiliate commission, if buyer was attributed to a referral.
+    try {
+      const { maybePayoutReferralForOrder } = await import("../api/growth");
+      await maybePayoutReferralForOrder(o.buyer_id, orderId, o.total_cents);
+    } catch (e) {
+      console.error("[affiliate] payout failed", (e as Error)?.message);
+    }
   });
 }
 
