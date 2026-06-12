@@ -16,6 +16,8 @@ export interface PublicSeller {
   created_at: number;
   verification_tier: "unverified" | "verified" | "business" | "premium";
   trust_score: number;
+  refund_count: number;
+  dispute_count: number;
 }
 
 export interface StoreProfile extends PublicSeller {
