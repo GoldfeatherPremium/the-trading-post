@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, BookOpen, ListChecks, Search, Send, Upload, X } from "lucide-react";
+import { AlertTriangle, BookOpen, ListChecks, Search, Send, Sparkles, Upload, X } from "lucide-react";
+import { generateProductContent } from "@/lib/api/ai";
 import { toast } from "sonner";
 import { z } from "zod";
 import { getHomeData, listCatalogItems } from "@/lib/api/catalog";
@@ -390,6 +391,18 @@ function ProductForm() {
         <BookOpen className="size-4 text-primary" /> 4. Product details
       </h2>
 
+      <AiGenerator
+        itemName={selectedItem?.name ?? ""}
+        categoryName={selectedCat?.name ?? ""}
+        onApply={(r) =>
+          setForm((f) => ({
+            ...f,
+            title: r.title ?? f.title,
+            description: r.description ?? f.description,
+          }))
+        }
+      />
+
       <div className="space-y-1.5">
         <Label className="text-xs">Title (min. 8 chars)</Label>
         <Input
@@ -689,5 +702,63 @@ function ProductForm() {
         {save.isPending ? "Submitting…" : edit ? "Save & resubmit for review" : "Submit for review"}
       </Button>
     </form>
+  );
+}
+
+function AiGenerator({
+  itemName,
+  categoryName,
+  onApply,
+}: {
+  itemName: string;
+  categoryName: string;
+  onApply: (r: { title?: string; description?: string }) => void;
+}) {
+  const [hint, setHint] = useState("");
+  const [open, setOpen] = useState(false);
+  const gen = useMutation({
+    mutationFn: () =>
+      generateProductContent({
+        data: { itemName, categoryName: categoryName || undefined, hint: hint || undefined, field: "all" },
+      }),
+    onSuccess: (r) => {
+      onApply({ title: r.title, description: r.description });
+      toast.success("AI draft applied — review and edit before submitting.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (!itemName) return null;
+  return (
+    <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-xs font-bold text-primary"
+      >
+        <Sparkles className="size-4" /> Generate with AI
+      </button>
+      {open && (
+        <div className="space-y-2">
+          <Input
+            placeholder={`Optional notes (e.g. "1 month, EU region, instant")`}
+            value={hint}
+            onChange={(e) => setHint(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => gen.mutate()}
+            disabled={gen.isPending}
+            className="text-xs"
+          >
+            {gen.isPending ? "Generating…" : "Fill title & description"}
+          </Button>
+          <p className="text-[10px] text-muted-foreground">
+            AI draft fills the title and description below. Always review before submitting.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

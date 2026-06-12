@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Sparkles } from "lucide-react";
 import { listDisputes, resolveDispute } from "@/lib/api/admin";
+import { aiAssistDispute } from "@/lib/api/ai";
 import { GENERIC_STATUS_CLS, dateTime, usdt } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +91,7 @@ function AdminDisputes() {
               <b>Seller:</b> {dd.seller_response}
             </p>
           )}
+          <AiAssist orderId={dd.order_id as string} onCopy={(reply) => setNote(reply.slice(0, 200))} />
           {dd.status !== "resolved" ? (
             resolving === dd.id ? (
               <div className="flex gap-2 flex-wrap items-center pt-1">
@@ -168,6 +171,60 @@ function AdminDisputes() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function AiAssist({ orderId, onCopy }: { orderId: string; onCopy: (reply: string) => void }) {
+  const [result, setResult] = useState<{
+    category: string;
+    severity: string;
+    summary: string;
+    suggestedReply: string;
+    suggestedResolution: string;
+  } | null>(null);
+  const run = useMutation({
+    mutationFn: () => aiAssistDispute({ data: { orderId } }),
+    onSuccess: (r) => setResult(r),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <div className="rounded-md border border-primary/30 bg-primary/5 p-2 space-y-1">
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-7 text-[10px]"
+          onClick={() => run.mutate()}
+          disabled={run.isPending}
+        >
+          <Sparkles className="size-3 mr-1" />
+          {run.isPending ? "Analysing…" : result ? "Re-analyse" : "AI assist"}
+        </Button>
+        {result && (
+          <span className="text-[10px] text-muted-foreground">
+            {result.category} · severity {result.severity} · suggests{" "}
+            <b className="text-foreground">{result.suggestedResolution.replaceAll("_", " ")}</b>
+          </span>
+        )}
+      </div>
+      {result && (
+        <div className="space-y-1 text-[11px]">
+          <p className="text-muted-foreground">{result.summary}</p>
+          <div className="bg-secondary/60 rounded p-2 whitespace-pre-wrap">{result.suggestedReply}</div>
+          <button
+            type="button"
+            className="text-[10px] text-primary font-bold"
+            onClick={() => {
+              navigator.clipboard?.writeText(result.suggestedReply).catch(() => {});
+              onCopy(result.suggestedReply);
+              toast.success("Reply copied to clipboard.");
+            }}
+          >
+            Copy reply
+          </button>
+        </div>
+      )}
     </div>
   );
 }
