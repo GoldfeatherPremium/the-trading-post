@@ -160,7 +160,10 @@ export const getMyLoyalty = createServerFn({ method: "GET" }).handler(async () =
     [user.id],
   );
   const spend = stats?.spend ?? 0;
-  const tierIdx = LOYALTY_TIERS.findLastIndex((t) => spend >= t.min_spend_cents);
+  let tierIdx = 0;
+  for (let i = 0; i < LOYALTY_TIERS.length; i++) {
+    if (spend >= LOYALTY_TIERS[i].min_spend_cents) tierIdx = i;
+  }
   const tier = LOYALTY_TIERS[Math.max(0, tierIdx)];
   const next = LOYALTY_TIERS[Math.max(0, tierIdx) + 1] ?? null;
   return {
