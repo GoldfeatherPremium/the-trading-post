@@ -73,6 +73,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+const SITE = "https://warm-trade-space.lovable.app";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -84,6 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Buy & sell game currency, items, accounts, top-ups and boosting.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "X-VAULT" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:title", content: "X-VAULT — Gaming Marketplace" },
       { name: "twitter:title", content: "X-VAULT — Gaming Marketplace" },
@@ -104,6 +107,35 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Hind:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500&display=swap",
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": `${SITE}#org`,
+              name: "X-VAULT",
+              url: SITE,
+              logo: `${SITE}/favicon.ico`,
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${SITE}#website`,
+              url: SITE,
+              name: "X-VAULT",
+              publisher: { "@id": `${SITE}#org` },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${SITE}/browse?q={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ],
+        }),
       },
     ],
   }),

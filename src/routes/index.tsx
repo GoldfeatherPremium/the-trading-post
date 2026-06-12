@@ -19,6 +19,8 @@ import { productImage } from "@/lib/images";
 import { SmartSearch } from "@/components/smart-search";
 import { VerificationBadge, TrustScore } from "@/components/seller-badge";
 
+const SITE = "https://warm-trade-space.lovable.app";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -28,7 +30,14 @@ export const Route = createFileRoute("/")({
         content:
           "The trusted digital goods marketplace. Game currency, gift cards, keys, accounts and boosting — escrow protected, paid in USDT, instant delivery.",
       },
+      { property: "og:title", content: "X-VAULT — Buy & Sell Digital Goods with USDT Escrow" },
+      {
+        property: "og:description",
+        content: "Escrow-protected digital marketplace. Pay in USDT, instant delivery.",
+      },
+      { property: "og:url", content: SITE + "/" },
     ],
+    links: [{ rel: "canonical", href: SITE + "/" }],
   }),
   component: Index,
 });
