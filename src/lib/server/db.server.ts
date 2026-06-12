@@ -752,7 +752,7 @@ async function migrate(e: Engine): Promise<void> {
   await e
     .exec(
       `create table if not exists search_queries (
-        id ${pk},
+        id ${dialect === "postgres" ? "bigint generated always as identity primary key" : "integer primary key autoincrement"},
         query text not null,
         user_id text,
         results integer not null default 0,
