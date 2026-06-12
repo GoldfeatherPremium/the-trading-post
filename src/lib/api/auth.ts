@@ -86,6 +86,8 @@ export const login = createServerFn({ method: "POST" })
   .inputValidator(z.object({ email: z.string().email(), password: z.string().min(1) }))
   .handler(async ({ data }) => {
     await appContext();
+    const email = data.email.toLowerCase().trim();
+    rateLimit({ key: `login:${email}`, limit: 8, windowMs: 60_000 });
     const row = await q1<{ id: string; password_hash: string; is_banned: number }>(
       `select id, password_hash, is_banned from users where email = ?`,
       [data.email.toLowerCase().trim()],
