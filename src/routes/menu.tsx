@@ -22,6 +22,7 @@ import {
 import { PageShell } from "@/components/shell";
 import { useMe } from "@/hooks/use-me";
 import { logout } from "@/lib/api/auth";
+import { useLocale, SUPPORTED_LOCALES, SUPPORTED_CURRENCIES } from "@/hooks/use-locale";
 import {
   Accordion,
   AccordionContent,
