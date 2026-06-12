@@ -17,6 +17,7 @@ import { ProductCard } from "@/components/product-card";
 import { usdtShort, timeAgo } from "@/lib/format";
 import { productImage } from "@/lib/images";
 import { SmartSearch } from "@/components/smart-search";
+import { VerificationBadge, TrustScore } from "@/components/seller-badge";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -88,6 +89,21 @@ function Index() {
               <div className="pt-1 relative z-50">
                 <SmartSearch variant="hero" />
               </div>
+              {data?.trendingSearches && data.trendingSearches.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                  <span className="text-muted-foreground tracking-widest font-bold">TRENDING:</span>
+                  {data.trendingSearches.slice(0, 6).map((s) => (
+                    <Link
+                      key={s.query}
+                      to="/browse"
+                      search={{ q: s.query }}
+                      className="px-2 py-1 rounded-full bg-secondary/70 border border-border text-foreground/90 hover:border-primary/40 hover:text-primary capitalize"
+                    >
+                      {s.query}
+                    </Link>
+                  ))}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <Link
                   to="/browse"
@@ -127,8 +143,8 @@ function Index() {
             className="col-span-3 lg:col-span-2"
           />
           <StatTile
-            label="Reviews"
-            value={(data?.stats.reviews ?? 0).toLocaleString()}
+            label="24h GMV"
+            value={usdtShort(data?.last24h.gmv24h ?? 0)}
             icon={<TrendingUp className="size-4" />}
             className="col-span-3 lg:col-span-2"
             accent
@@ -189,7 +205,7 @@ function Index() {
               <div>
                 <p className="text-sm font-bold leading-tight">{c.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
-                  Browse <ArrowUpRight className="size-2.5" />
+                  {c.product_count > 0 ? `${c.product_count.toLocaleString()} listings` : "Browse"} <ArrowUpRight className="size-2.5" />
                 </p>
               </div>
             </Link>
@@ -282,10 +298,14 @@ function Index() {
                   {s.username.slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate">{s.username}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Lvl {s.seller_level} · {s.total_sales.toLocaleString()} sales
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-bold truncate">{s.username}</p>
+                    <VerificationBadge tier={s.verification_tier} size="xs" showLabel={false} />
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span>Lvl {s.seller_level} · {s.total_sales.toLocaleString()} sales</span>
+                    <TrustScore score={s.trust_score} />
+                  </div>
                 </div>
                 <span className="text-[11px] text-yellow-400 flex items-center gap-0.5 font-bold">
                   <Star className="size-3 fill-current" />
