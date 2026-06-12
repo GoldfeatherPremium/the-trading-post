@@ -63,23 +63,6 @@ export const getMyReferral = createServerFn({ method: "GET" }).handler(async () 
   return { referral: r, recentClicks };
 });
 
-/** Public: record a click + return the referral target. Called by the
- *  /r/$code redirect route — no auth required. */
-export async function recordReferralClick(
-  code: string,
-  ua: string | null,
-  country: string | null,
-): Promise<{ ok: boolean; refId: string | null }> {
-  const r = await q1<{ id: string }>(`select id from referrals where code = ?`, [code]);
-  if (!r) return { ok: false, refId: null };
-  await run(
-    `insert into referral_clicks (referral_id, fingerprint, user_agent, country, created_at) values (?,?,?,?,?)`,
-    [r.id, null, (ua ?? "").slice(0, 200), country, now()],
-  );
-  await run(`update referrals set click_count = click_count + 1 where id = ?`, [r.id]);
-  return { ok: true, refId: r.id };
-}
-
 /** Attribute the currently-signed-in user to a referral code (signup hook). */
 export const attributeReferral = createServerFn({ method: "POST" })
   .inputValidator(z.object({ code: z.string().trim().min(3).max(16) }))
@@ -91,7 +74,7 @@ export const attributeReferral = createServerFn({ method: "POST" })
       [data.code.toUpperCase()],
     );
     if (!r) return { ok: false };
-    if (r.owner_user_id === user.id) return { ok: false }; // no self-attribution
+    if (r.owner_user_id === user.id) return { ok: false };
     const existing = await q1(`select user_id from referral_attributions where user_id = ?`, [
       user.id,
     ]);
@@ -103,38 +86,6 @@ export const attributeReferral = createServerFn({ method: "POST" })
     await run(`update referrals set signup_count = signup_count + 1 where id = ?`, [r.id]);
     return { ok: true };
   });
-
-/** Credit the referrer's wallet when an attributed buyer's order is released.
- *  Called from lifecycle.server.releaseOrder. Safe to call multiple times. */
-export async function maybePayoutReferralForOrder(
-  buyerId: string,
-  orderId: string,
-  orderTotalCents: number,
-): Promise<void> {
-  const attr = await q1<{ referral_id: string }>(
-    `select referral_id from referral_attributions where user_id = ?`,
-    [buyerId],
-  );
-  if (!attr) return;
-  const ref = await q1<{ id: string; owner_user_id: string; commission_pct: number }>(
-    `select id, owner_user_id, commission_pct from referrals where id = ?`,
-    [attr.referral_id],
-  );
-  if (!ref) return;
-  // dedup: refuse to pay twice for same order
-  const already = await q1(
-    `select 1 from wallet_ledger where user_id = ? and ref_id = ? and kind = 'adjustment'`,
-    [ref.owner_user_id, orderId],
-  );
-  if (already) return;
-  const payout = Math.floor((orderTotalCents * ref.commission_pct) / 100);
-  if (payout <= 0) return;
-  await txAdjustment(ref.owner_user_id, payout, `Affiliate commission · ${orderId}`);
-  await run(
-    `update referrals set purchase_count = purchase_count + 1, earnings_cents = earnings_cents + ? where id = ?`,
-    [payout, ref.id],
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Buyer Loyalty — tier derived from lifetime spend + orders + referrals
