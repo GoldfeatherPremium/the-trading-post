@@ -199,6 +199,10 @@ function AccountHub() {
           ))}
         </Accordion>
 
+        <LocaleSwitcher />
+
+
+
         {me && (
           <button
             onClick={() => doLogout.mutate()}
