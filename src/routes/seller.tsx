@@ -9,6 +9,7 @@ import {
   Repeat,
   BarChart3,
   Tag,
+  Store,
 } from "lucide-react";
 import { PageShell } from "@/components/shell";
 import { useMe } from "@/hooks/use-me";
@@ -23,6 +24,7 @@ const NAV = [
   { to: "/seller/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/seller/products", label: "Products", icon: Package },
   { to: "/seller/orders", label: "Orders", icon: ListOrdered },
+  { to: "/seller/storefront", label: "Storefront", icon: Store },
   { to: "/seller/promotions", label: "Promotions", icon: Tag },
   { to: "/seller/subscriptions", label: "Subscriptions", icon: Repeat },
   { to: "/seller/wallet", label: "Wallet", icon: Wallet },
