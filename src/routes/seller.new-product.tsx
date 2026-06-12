@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, BookOpen, ListChecks, Search, Send, Upload, X } from "lucide-react";
+import { AlertTriangle, BookOpen, ListChecks, Search, Send, Sparkles, Upload, X } from "lucide-react";
+import { generateProductContent } from "@/lib/api/ai";
 import { toast } from "sonner";
 import { z } from "zod";
 import { getHomeData, listCatalogItems } from "@/lib/api/catalog";
