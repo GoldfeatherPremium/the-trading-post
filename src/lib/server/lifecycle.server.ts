@@ -10,6 +10,7 @@ import {
 } from "./core.server";
 import { txEscrowHold, txEscrowRelease, txRefund } from "./money.server";
 import { recomputeSellerTrust } from "./trust.server";
+import { assessOrderRisk, recordRiskEvent } from "./fraud.server";
 
 export interface OrderRow {
   id: string;
