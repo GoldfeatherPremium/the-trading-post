@@ -135,13 +135,18 @@ async function getPgClient(): Promise<{ sql: PgSql; oneShot: boolean }> {
   return { sql: await makePgClient(), oneShot: true };
 }
 
-/** Wrap a server handler so the postgres client is request-scoped and closed. */
+/** Wrap a server handler so the postgres client is request-scoped.
+ * We do NOT await sql.end() — closing the TCP socket can take seconds on
+ * Cloudflare Workers and would delay the response. The isolate's GC handles
+ * cleanup; postgres.js has idle_timeout/max_lifetime as a backstop. */
 export async function withDbRequest<T>(fn: () => Promise<T>): Promise<T> {
   const slot: { sql: PgSql | null } = { sql: null };
   try {
     return await pgRequestStore.run(slot, fn);
   } finally {
-    if (slot.sql) await slot.sql.end({ timeout: 1 }).catch(() => {});
+    if (slot.sql) {
+      void slot.sql.end({ timeout: 1 }).catch(() => {});
+    }
   }
 }
 
